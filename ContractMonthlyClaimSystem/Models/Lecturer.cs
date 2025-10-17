@@ -35,6 +35,7 @@ namespace ContractMonthlyClaimSystem.Models
 
         // Navigation properties
         public virtual ICollection<MonthlyClaim> MonthlyClaims { get; set; }
+        public virtual User User { get; set; }
 
         public string FullName => $"{FirstName} {LastName}";
     }

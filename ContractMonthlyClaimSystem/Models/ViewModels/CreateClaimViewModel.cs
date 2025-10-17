@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ContractMonthlyClaimSystem.Models
+namespace ContractMonthlyClaimSystem.Models.ViewModels
 {
     public class CreateClaimViewModel
     {

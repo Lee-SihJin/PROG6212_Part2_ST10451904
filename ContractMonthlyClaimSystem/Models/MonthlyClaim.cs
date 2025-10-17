@@ -21,8 +21,7 @@ namespace ContractMonthlyClaimSystem.Models
         public int LecturerId { get; set; }
 
         [Required]
-        [StringLength(7)] // Format: YYYY-MM
-        public string ClaimMonth { get; set; } // e.g., "2024-03"
+        public DateTime ClaimMonth { get; set; } // Store as DateTime, format in display
 
         [Required]
         public DateTime SubmissionDate { get; set; }
@@ -54,6 +53,11 @@ namespace ContractMonthlyClaimSystem.Models
 
         // Computed properties
         public string DisplayMonth => DateTime.Parse($"{ClaimMonth}-01").ToString("MMMM yyyy");
-        public bool CanEdit => Status == ClaimStatus.Draft;
+        
+        // Add validation for business rules
+        public bool CanBeEdited => Status == ClaimStatus.Draft;
+        public bool CanBeSubmitted => Status == ClaimStatus.Draft && ClaimItems?.Any() == true;
+        public bool RequiresCoordinator => Status >= ClaimStatus.Submitted;
+        public bool RequiresManager => Status >= ClaimStatus.CoordinatorApproved;
     }
 }
