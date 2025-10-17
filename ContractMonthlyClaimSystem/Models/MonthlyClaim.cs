@@ -36,10 +36,10 @@ namespace ContractMonthlyClaimSystem.Models
         public ClaimStatus Status { get; set; } = ClaimStatus.Draft;
 
         [StringLength(500)]
-        public string CoordinatorComments { get; set; }
+        public string? CoordinatorComments { get; set; }
 
         [StringLength(500)]
-        public string ManagerComments { get; set; }
+        public string? ManagerComments { get; set; }
 
         public int? CoordinatorId { get; set; }
         public int? ManagerId { get; set; }

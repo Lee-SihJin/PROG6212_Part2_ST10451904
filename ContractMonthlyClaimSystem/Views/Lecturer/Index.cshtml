@@ -1,64 +1,289 @@
-﻿@{
+﻿@model ContractMonthlyClaimSystem.Controllers.LecturerDashboardViewModel
+@{
     ViewData["Title"] = "Lecturer Dashboard";
 }
 
-<h2>Lecturer Dashboard</h2>
+<div class="container-fluid">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h2 class="card-title">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Welcome, @Model.Lecturer?.FullName!
+                            </h2>
+                            <p class="card-text mb-0">
+                                Employee Number: @Model.Lecturer?.EmployeeNumber |
+                                Hourly Rate: R @Model.Lecturer?.HourlyRate.ToString("N2")
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-light text-dark p-3 rounded">
+                                <h5 class="mb-1">Current Month</h5>
+                                <h4 class="text-primary mb-0">@DateTime.Now.ToString("MMMM yyyy")</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- Submit Claim -->
-<div class="card p-3 mb-3">
-    <h4>Submit Claim</h4>
-    <form>
-        <label>Month</label>
-        <input type="text" class="form-control" placeholder="August 2025" /><br />
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@Model.RecentClaims.Count(mc => mc.Status == ClaimStatus.Paid)</h4>
+                            <p class="card-text">Paid Claims</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@Model.RecentClaims.Count(mc => mc.Status == ClaimStatus.Submitted || mc.Status == ClaimStatus.CoordinatorApproved)</h4>
+                            <p class="card-text">Pending</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@Model.RecentClaims.Count(mc => mc.Status == ClaimStatus.Draft)</h4>
+                            <p class="card-text">Drafts</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-edit fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-secondary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">@Model.RecentClaims.Count</h4>
+                            <p class="card-text">Total Claims</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-invoice fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <label>Hours Worked</label>
-        <input type="number" class="form-control" placeholder="Enter hours" /><br />
+    <div class="row">
+        <!-- Submit Claim Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Submit New Claim
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form asp-controller="Lecturer" asp-action="SubmitClaim" method="post">
+                        @Html.AntiForgeryToken()
 
-        <label>Hourly Rate</label>
-        <input type="number" class="form-control" placeholder="Enter rate" /><br />
+                        <div class="mb-3">
+                            <label for="ClaimMonth" class="form-label">Claim Month</label>
+                            <select class="form-select" id="ClaimMonth" name="ClaimMonth" required>
+                                <option value="">Select Month</option>
+                                @{
+                                    var currentDate = DateTime.Now;
+                                    for (int i = 0; i < 6; i++)
+                                    {
+                                        var date = currentDate.AddMonths(-i);
+                                        <option value="@date.ToString("yyyy-MM")">@date.ToString("MMMM yyyy")</option>
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">Select the month you're claiming for</div>
+                        </div>
 
-        <button type="button" class="btn btn-primary"
-                onclick="alert('Claim submitted successfully (simulation only).');">
-            Submit Claim
-        </button>
-    </form>
+                        <div class="mb-3">
+                            <label for="TotalHours" class="form-label">Total Hours Worked</label>
+                            <input type="number" step="0.5" min="0.5" max="200"
+                                   class="form-control" id="TotalHours" name="TotalHours"
+                                   placeholder="Enter total hours" required>
+                            <div class="form-text">Hours must be between 0.5 and 200</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Hourly Rate</label>
+                            <input type="text" class="form-control"
+                                   value="R @Model.Lecturer?.HourlyRate.ToString("N2")" readonly>
+                            <div class="form-text">Your current contracted hourly rate</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Claim
+                            </button>
+                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-outline-secondary">
+                                <i class="fas fa-save me-2"></i>Save as Draft
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="#" class="btn btn-outline-primary w-100 h-100 py-3">
+                                <i class="fas fa-upload fa-2x mb-2"></i><br />
+                                Upload Document
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-outline-warning w-100 h-100 py-3">
+                                <i class="fas fa-edit fa-2x mb-2"></i><br />
+                                Create Draft
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="#" class="btn btn-outline-success w-100 h-100 py-3">
+                                <i class="fas fa-history fa-2x mb-2"></i><br />
+                                View History
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="#" class="btn btn-outline-secondary w-100 h-100 py-3">
+                                <i class="fas fa-download fa-2x mb-2"></i><br />
+                                Export Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Claims Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Claims
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentClaims.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Submission Date</th>
+                                        <th>Total Hours</th>
+                                        <th>Total Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var claim in Model.RecentClaims)
+                                    {
+                                        <tr>
+                                            <td>@claim.DisplayMonth</td>
+                                            <td>@claim.SubmissionDate.ToString("dd MMM yyyy")</td>
+                                            <td>@claim.TotalHours.ToString("N1")</td>
+                                            <td>R @claim.TotalAmount.ToString("N2")</td>
+                                            <td>
+                                                <span class="badge @GetStatusBadgeClass(claim.Status)">
+                                                    @claim.Status
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Lecturer" asp-action="ClaimDetails" asp-route-id="@claim.ClaimId"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No claims found</h5>
+                            <p class="text-muted">You haven't submitted any claims yet.</p>
+                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Create Your First Claim
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Upload Document -->
-<div class="card p-3 mb-3">
-    <h4>Upload Supporting Document</h4>
-    <input type="file" class="form-control mb-2" />
-    <button type="button" class="btn btn-success"
-            onclick="alert('Document uploaded successfully (simulation only).');">
-        Upload Document
-    </button>
-</div>
+@functions {
+    string GetStatusBadgeClass(ClaimStatus status)
+    {
+        return status switch
+        {
+            ClaimStatus.Draft => "bg-secondary",
+            ClaimStatus.Submitted => "bg-warning",
+            ClaimStatus.CoordinatorApproved => "bg-info",
+            ClaimStatus.ManagerApproved => "bg-success",
+            ClaimStatus.Paid => "bg-success",
+            ClaimStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
 
-<!-- Claim History -->
-<div class="card p-3">
-    <h4>Claim History</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Month</th>
-                <th>Total Hours</th>
-                <th>Amount</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>July 2025</td>
-                <td>40</td>
-                <td>R 12,000</td>
-                <td>Approved</td>
-            </tr>
-            <tr>
-                <td>August 2025</td>
-                <td>35</td>
-                <td>R 10,500</td>
-                <td>Pending</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+@section Scripts {
+    <script>
+        // Real-time amount calculation
+        document.getElementById('TotalHours').addEventListener('input', function() {
+            const hours = parseFloat(this.value) || 0;
+            const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
+            const amount = hours * hourlyRate;
+
+            // You can display this in a separate element if needed
+            console.log('Estimated amount: R', amount.toFixed(2));
+        });
+    </script>
+}

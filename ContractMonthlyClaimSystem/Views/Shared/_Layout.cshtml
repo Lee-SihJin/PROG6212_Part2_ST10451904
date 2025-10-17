@@ -3,43 +3,103 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ContractMonthlyClaimSystem</title>
-    <script type="importmap"></script>
+    <title>@ViewData["Title"] - Contract Monthly Claim System</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ContractMonthlyClaimSystem.styles.css" asp-append-version="true" />
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .nav-link {
+            font-weight: 500;
+        }
+
+        .welcome-text {
+            color: #fff !important;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ContractMonthlyClaimSystem</a>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>
+                    CMCS
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Coordinator" asp-action="Index">Coordinator</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Lecturer" asp-action="Index">Lecturer</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Manager" asp-action="Index">Manager</a>
-                        </li>
-                    </ul>
-                    @* In your _Layout.cshtml navigation section *@
+                    <!-- Navigation Menu - Only show when authenticated -->
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <a class="nav-link text-light" asp-area="" asp-controller="Home" asp-action="Index">
+                                    <i class="fas fa-home me-1"></i>Home
+                                </a>
+                            </li>
+                            <!-- Show role-specific navigation -->
+                            @if (User.IsInRole("ProgrammeCoordinator") || User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-area="" asp-controller="Coordinator" asp-action="Index">
+                                        <i class="fas fa-tasks me-1"></i>Coordinator
+                                    </a>
+                                </li>
+                            }
+                            @if (User.IsInRole("Lecturer") || User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-area="" asp-controller="Lecturer" asp-action="Index">
+                                        <i class="fas fa-chalkboard-teacher me-1"></i>Lecturer
+                                    </a>
+                                </li>
+                            }
+                            @if (User.IsInRole("AcademicManager") || User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-area="" asp-controller="Manager" asp-action="Index">
+                                        <i class="fas fa-user-tie me-1"></i>Manager
+                                    </a>
+                                </li>
+                            }
+                            @if (User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-area="" asp-controller="Test" asp-action="PasswordHashTester">
+                                        <i class="fas fa-tools me-1"></i>Test Tools
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <!-- Empty ul to maintain layout when not authenticated -->
+                        <ul class="navbar-nav flex-grow-1"></ul>
+                    }
+
+                    <!-- User Authentication Section -->
                     <ul class="navbar-nav">
                         @if (User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
-                                <span class="navbar-text text-light me-3">
-                                    Welcome, @User.Identity.Name!
+                                <span class="navbar-text welcome-text me-3">
+                                    <i class="fas fa-user me-1"></i>Welcome, @User.Identity.Name!
+                                    @{
+                                        var role = "User";
+                                        if (User.IsInRole("Administrator")) role = "Administrator";
+                                        else if (User.IsInRole("AcademicManager")) role = "Academic Manager";
+                                        else if (User.IsInRole("ProgrammeCoordinator")) role = "Programme Coordinator";
+                                        else if (User.IsInRole("Lecturer")) role = "Lecturer";
+                                    }
+                                    <small class="d-block text-light opacity-75">@role</small>
                                 </span>
                             </li>
                             <li class="nav-item">
@@ -63,17 +123,44 @@
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
+            <!-- Display temporary messages -->
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="border-top footer text-muted bg-light">
         <div class="container">
-            &copy; 2025 - ContractMonthlyClaimSystem - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            <div class="row">
+                <div class="col-md-6">
+                    &copy; 2025 - Contract Monthly Claim System
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">
+                        <i class="fas fa-university me-1"></i>University Portal
+                    </span>
+                </div>
+            </div>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
