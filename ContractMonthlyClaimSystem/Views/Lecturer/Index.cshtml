@@ -1,0 +1,64 @@
+﻿@{
+    ViewData["Title"] = "Lecturer Dashboard";
+}
+
+<h2>Lecturer Dashboard</h2>
+
+<!-- Submit Claim -->
+<div class="card p-3 mb-3">
+    <h4>Submit Claim</h4>
+    <form>
+        <label>Month</label>
+        <input type="text" class="form-control" placeholder="August 2025" /><br />
+
+        <label>Hours Worked</label>
+        <input type="number" class="form-control" placeholder="Enter hours" /><br />
+
+        <label>Hourly Rate</label>
+        <input type="number" class="form-control" placeholder="Enter rate" /><br />
+
+        <button type="button" class="btn btn-primary"
+                onclick="alert('Claim submitted successfully (simulation only).');">
+            Submit Claim
+        </button>
+    </form>
+</div>
+
+<!-- Upload Document -->
+<div class="card p-3 mb-3">
+    <h4>Upload Supporting Document</h4>
+    <input type="file" class="form-control mb-2" />
+    <button type="button" class="btn btn-success"
+            onclick="alert('Document uploaded successfully (simulation only).');">
+        Upload Document
+    </button>
+</div>
+
+<!-- Claim History -->
+<div class="card p-3">
+    <h4>Claim History</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Total Hours</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>July 2025</td>
+                <td>40</td>
+                <td>R 12,000</td>
+                <td>Approved</td>
+            </tr>
+            <tr>
+                <td>August 2025</td>
+                <td>35</td>
+                <td>R 10,500</td>
+                <td>Pending</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

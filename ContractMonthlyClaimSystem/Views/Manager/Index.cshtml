@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Manager Dashboard";
+}
+
+<h2>Manager Dashboard</h2>
+
+<!-- Approvals -->
+<div class="card p-3 mb-3">
+    <h4>Claims for Final Approval</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Lecturer</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Coordinator Feedback</th>
+                <th>Decision</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Prof. Adams</td>
+                <td>R 8,000</td>
+                <td>Pending</td>
+                <td>Verified by Coordinator</td>
+                <td>
+                    <button type="button" class="btn btn-success"
+                            onclick="alert('Final Approval Granted (simulation only).');">
+                        Approve
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            onclick="alert('Final Approval Rejected (simulation only).');">
+                        Reject
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Reports -->
+<div class="card p-3">
+    <h4>Reports</h4>
+    <p>Total Claims Approved: 10</p>
+    <p>Total Claims Rejected: 2</p>
+    <p>Total Amount Approved: R15,000</p>
+</div>

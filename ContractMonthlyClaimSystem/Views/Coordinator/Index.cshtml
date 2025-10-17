@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "Coordinator Dashboard";
+}
+
+<h2>Coordinator Dashboard</h2>
+
+<!-- Pending Claims -->
+<div class="card p-3 mb-3">
+    <h4>Pending Claims</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Lecturer</th>
+                <th>Hours</th>
+                <th>Amount</th>
+                <th>Date Submitted</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Dr. Smith</td>
+                <td>20</td>
+                <td>R 6,000</td>
+                <td>2025-08-10</td>
+                <td>
+                    <button type="button" class="btn btn-success"
+                            onclick="alert('Claim Approved (simulation only).');">
+                        Approve
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                            onclick="alert('Claim Rejected (simulation only).');">
+                        Reject
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
