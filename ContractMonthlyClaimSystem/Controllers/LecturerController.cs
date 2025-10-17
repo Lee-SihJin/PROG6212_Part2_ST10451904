@@ -66,7 +66,7 @@ namespace ContractMonthlyClaimSystem.Controllers
         // POST: Submit New Claim
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SubmitClaim(SubmitClaimViewModel model)
+        public async Task<IActionResult> SubmitClaim(SubmitClaimViewModel model, string submissionType)
         {
             if (!ModelState.IsValid)
             {
@@ -98,6 +98,9 @@ namespace ContractMonthlyClaimSystem.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                // Determine status based on submission type
+                var status = submissionType == "Draft" ? ClaimStatus.Draft : ClaimStatus.Submitted;
+
                 var monthlyClaim = new MonthlyClaim
                 {
                     LecturerId = currentUser.Lecturer.LecturerId,
@@ -105,19 +108,22 @@ namespace ContractMonthlyClaimSystem.Controllers
                     SubmissionDate = DateTime.Now,
                     TotalHours = model.TotalHours,
                     TotalAmount = model.TotalHours * currentUser.Lecturer.HourlyRate,
-                    Status = ClaimStatus.Submitted
+                    Status = status
                 };
 
                 _context.MonthlyClaims.Add(monthlyClaim);
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"Claim for {model.ClaimMonth} submitted successfully!";
-                _logger.LogInformation("Lecturer {LecturerId} submitted claim for {Month}", currentUser.Lecturer.LecturerId, model.ClaimMonth);
+                var actionMessage = status == ClaimStatus.Draft ? "saved as draft" : "submitted";
+                TempData["Success"] = $"Claim for {model.ClaimMonth} {actionMessage} successfully!";
+
+                _logger.LogInformation("Lecturer {LecturerId} {action} claim for {Month}",
+                    currentUser.Lecturer.LecturerId, actionMessage, model.ClaimMonth);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error submitting claim");
-                TempData["Error"] = "An error occurred while submitting the claim.";
+                TempData["Error"] = "An error occurred while processing the claim.";
             }
 
             return RedirectToAction(nameof(Index));

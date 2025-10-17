@@ -105,8 +105,11 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form asp-controller="Lecturer" asp-action="SubmitClaim" method="post">
+                    <form asp-controller="Lecturer" asp-action="SubmitClaim" method="post" id="claimForm">
                         @Html.AntiForgeryToken()
+
+                        <!-- Hidden field to track submission type -->
+                        <input type="hidden" id="SubmissionType" name="SubmissionType" value="Submitted" />
 
                         <div class="mb-3">
                             <label for="ClaimMonth" class="form-label">Claim Month</label>
@@ -139,13 +142,20 @@
                             <div class="form-text">Your current contracted hourly rate</div>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Estimated Amount</label>
+                            <input type="text" class="form-control" id="EstimatedAmount"
+                                   value="R 0.00" readonly>
+                            <div class="form-text">Calculated based on hours × hourly rate</div>
+                        </div>
+
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success btn-lg">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitButton">
                                 <i class="fas fa-paper-plane me-2"></i>Submit Claim
                             </button>
-                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-outline-secondary">
+                            <button type="button" class="btn btn-outline-secondary" id="draftButton">
                                 <i class="fas fa-save me-2"></i>Save as Draft
-                            </a>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -169,9 +179,9 @@
                             </a>
                         </div>
                         <div class="col-md-6">
-                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-outline-warning w-100 h-100 py-3">
-                                <i class="fas fa-edit fa-2x mb-2"></i><br />
-                                Create Draft
+                            <a href="#" class="btn btn-outline-warning w-100 h-100 py-3" onclick="showDrafts()">
+                                <i class="fas fa-file-alt fa-2x mb-2"></i><br />
+                                View Drafts
                             </a>
                         </div>
                         <div class="col-md-6">
@@ -234,6 +244,12 @@
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
+                                                @if (claim.Status == ClaimStatus.Draft)
+                                                {
+                                                    <a href="#" class="btn btn-sm btn-outline-warning ms-1" onclick="editDraft(@claim.ClaimId)">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                }
                                             </td>
                                         </tr>
                                     }
@@ -247,9 +263,9 @@
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">No claims found</h5>
                             <p class="text-muted">You haven't submitted any claims yet.</p>
-                            <a asp-controller="Lecturer" asp-action="CreateDraft" class="btn btn-primary">
+                            <button type="button" class="btn btn-primary" onclick="focusOnForm()">
                                 <i class="fas fa-plus me-2"></i>Create Your First Claim
-                            </a>
+                            </button>
                         </div>
                     }
                 </div>
@@ -276,14 +292,83 @@
 
 @section Scripts {
     <script>
+        // Set up form submission type
+        document.getElementById('draftButton').addEventListener('click', function() {
+            document.getElementById('SubmissionType').value = 'Draft';
+            document.getElementById('claimForm').submit();
+        });
+
+        document.getElementById('submitButton').addEventListener('click', function(e) {
+            document.getElementById('SubmissionType').value = 'Submitted';
+            // Let the form submit normally
+        });
+
         // Real-time amount calculation
         document.getElementById('TotalHours').addEventListener('input', function() {
             const hours = parseFloat(this.value) || 0;
             const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
             const amount = hours * hourlyRate;
 
-            // You can display this in a separate element if needed
-            console.log('Estimated amount: R', amount.toFixed(2));
+            // Update the estimated amount display
+            document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
+        });
+
+        // Form validation
+        document.getElementById('claimForm').addEventListener('submit', function(e) {
+            const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
+            const month = document.getElementById('ClaimMonth').value;
+            const submissionType = document.getElementById('SubmissionType').value;
+
+            if (!month) {
+                e.preventDefault();
+                alert('Please select a claim month.');
+                document.getElementById('ClaimMonth').focus();
+                return;
+            }
+
+            if (hours < 0.5 || hours > 200) {
+                e.preventDefault();
+                alert('Hours must be between 0.5 and 200.');
+                document.getElementById('TotalHours').focus();
+                return;
+            }
+
+            // Confirm submission for actual claims
+            if (submissionType === 'Submitted') {
+                const confirmed = confirm('Are you sure you want to submit this claim? Once submitted, you cannot edit it.');
+                if (!confirmed) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+
+        function showDrafts() {
+            const draftClaims = @Model.RecentClaims.Count(mc => mc.Status == ClaimStatus.Draft);
+            if (draftClaims > 0) {
+                alert(`You have ${draftClaims} draft claim(s). They are listed in the Recent Claims table below.`);
+            } else {
+                alert('You don\'t have any draft claims.');
+            }
+        }
+
+        function editDraft(claimId) {
+            if (confirm('Would you like to edit this draft claim?')) {
+                // Redirect to edit page - you'll need to implement this
+                window.location.href = '/Lecturer/EditDraft/' + claimId;
+            }
+        }
+
+        function focusOnForm() {
+            document.getElementById('ClaimMonth').focus();
+        }
+
+        // Initialize estimated amount on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
+            const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
+            const amount = hours * hourlyRate;
+            document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
         });
     </script>
 }
