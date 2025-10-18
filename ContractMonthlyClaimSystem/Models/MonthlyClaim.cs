@@ -28,7 +28,9 @@ namespace ContractMonthlyClaimSystem.Models
 
         public DateTime? CoordinatorReviewDate { get; set; }
         public DateTime? ManagerReviewDate { get; set; }
-
+        public DateTime? CoordinatorApprovalDate { get; set; }
+        public DateTime? ManagerApprovalDate { get; set; }
+        public DateTime? PaymentDate { get; set; }
         public decimal TotalHours { get; set; }
         public decimal TotalAmount { get; set; }
 

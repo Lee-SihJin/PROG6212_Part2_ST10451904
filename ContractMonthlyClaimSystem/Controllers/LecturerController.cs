@@ -1,8 +1,10 @@
 ﻿// Controllers/LecturerController.cs
 using System.ComponentModel.DataAnnotations;
+using System.IO.Compression;
 using System.Security.Claims;
 using ContractMonthlyClaimSystem.Data;
 using ContractMonthlyClaimSystem.Models;
+using ContractMonthlyClaimSystem.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,10 +65,10 @@ namespace ContractMonthlyClaimSystem.Controllers
             }
         }
 
-        // POST: Submit New Claim
+        // Update the SubmitClaim method to handle modal-based documents
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SubmitClaim(SubmitClaimViewModel model, string submissionType)
+        public async Task<IActionResult> SubmitClaim(SubmitClaimViewModel model, string submissionType, List<IFormFile> supportingDocuments)
         {
             if (!ModelState.IsValid)
             {
@@ -114,11 +116,57 @@ namespace ContractMonthlyClaimSystem.Controllers
                 _context.MonthlyClaims.Add(monthlyClaim);
                 await _context.SaveChangesAsync();
 
-                var actionMessage = status == ClaimStatus.Draft ? "saved as draft" : "submitted";
-                TempData["Success"] = $"Claim for {model.ClaimMonth} {actionMessage} successfully!";
+                var latestClaim = await _context.MonthlyClaims
+                    .Where(mc => mc.LecturerId == currentUser.Lecturer.LecturerId)
+                    .OrderByDescending(mc => mc.ClaimId) // Or use SubmissionDate if you prefer
+                    .FirstOrDefaultAsync();
 
-                _logger.LogInformation("Lecturer {LecturerId} {action} claim for {Month}",
-                    currentUser.Lecturer.LecturerId, actionMessage, model.ClaimMonth);
+                // Handle file uploads from modal
+                if (supportingDocuments != null && supportingDocuments.Count > 0)
+                {
+                    for (int i = 0; i < supportingDocuments.Count; i++)
+                    {
+                        var file = supportingDocuments[i];
+                        if (file.Length > 0)
+                        {
+                            // Get document type and description
+                            var documentType = Request.Form[$"DocumentTypes[{i}]"].FirstOrDefault();
+                            var documentDescription = Request.Form[$"DocumentDescriptions[{i}]"].FirstOrDefault();
+
+                            // Read file into byte array
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                await file.CopyToAsync(memoryStream);
+                                var fileData = memoryStream.ToArray();
+
+                                // Create supporting document record with file data
+                                var supportingDocument = new SupportingDocument
+                                {
+                                    ClaimId = latestClaim.ClaimId,
+                                    FileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName),
+                                    OriginalFileName = file.FileName,
+                                    DocumentType = documentType != null ? (DocumentType)int.Parse(documentType) : DocumentType.Other,
+                                    FileData = fileData, // Store file in database
+                                    FileSize = file.Length,
+                                    ContentType = file.ContentType,
+                                    Description = documentDescription,
+                                    UploadDate = DateTime.Now
+                                };
+
+                                _context.SupportingDocuments.Add(supportingDocument);
+                            }
+                        }
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                var actionMessage = status == ClaimStatus.Draft ? "saved as draft" : "submitted";
+                var documentMessage = supportingDocuments?.Count > 0 ? $" with {supportingDocuments.Count} supporting document(s)" : "";
+
+                TempData["Success"] = $"Claim for {model.ClaimMonth} {actionMessage} successfully{documentMessage}!";
+
+                _logger.LogInformation("Lecturer {LecturerId} {action} claim for {Month} with {DocumentCount} documents",
+                    currentUser.Lecturer.LecturerId, actionMessage, model.ClaimMonth, supportingDocuments?.Count ?? 0);
             }
             catch (Exception ex)
             {
@@ -242,27 +290,56 @@ namespace ContractMonthlyClaimSystem.Controllers
 
             return months;
         }
-    }
 
-    // View Models
-    public class LecturerDashboardViewModel
-    {
-        public Lecturer? Lecturer { get; set; }
-        public List<MonthlyClaim> RecentClaims { get; set; } = new List<MonthlyClaim>();
-        public string CurrentMonth { get; set; } = string.Empty;
-    }
+        [HttpGet]
+        public async Task<IActionResult> DownloadDocument(int documentId)
+        {
+            var document = await _context.SupportingDocuments
+                .FirstOrDefaultAsync(d => d.DocumentId == documentId);
 
-    public class SubmitClaimViewModel
-    {
-        [Required(ErrorMessage = "Please select a month")]
-        [Display(Name = "Claim Month")]
-        public string ClaimMonth { get; set; } = string.Empty;
+            if (document == null || document.FileData == null)
+            {
+                return NotFound();
+            }
 
-        [Required(ErrorMessage = "Please enter total hours")]
-        [Range(0.5, 200, ErrorMessage = "Hours must be between 0.5 and 200")]
-        [Display(Name = "Total Hours")]
-        public decimal TotalHours { get; set; }
+            // Return the file from database
+            return File(document.FileData, document.ContentType, document.OriginalFileName);
+        }
 
-        public List<string> AvailableMonths { get; set; } = new List<string>();
+        [HttpGet]
+        public async Task<IActionResult> DownloadAllDocuments(int claimId)
+        {
+            var claim = await _context.MonthlyClaims
+                .Include(c => c.SupportingDocuments)
+                .FirstOrDefaultAsync(c => c.ClaimId == claimId);
+
+            if (claim?.SupportingDocuments?.Any() != true)
+            {
+                TempData["Error"] = "No documents found for this claim.";
+                return RedirectToAction(nameof(ClaimDetails), new { id = claimId });
+            }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+                {
+                    foreach (var document in claim.SupportingDocuments)
+                    {
+                        if (document.FileData != null && document.FileData.Length > 0)
+                        {
+                            var entry = archive.CreateEntry(document.OriginalFileName, CompressionLevel.Fastest);
+                            using (var entryStream = entry.Open())
+                            using (var fileStream = new MemoryStream(document.FileData))
+                            {
+                                await fileStream.CopyToAsync(entryStream);
+                            }
+                        }
+                    }
+                }
+
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                return File(memoryStream.ToArray(), "application/zip", $"Claim-{claimId}-Documents.zip");
+            }
+        }
     }
 }

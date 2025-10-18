@@ -195,7 +195,6 @@ namespace ContractMonthlyClaimSystem.Data
                 entity.Property(sd => sd.FileName).IsRequired().HasMaxLength(255);
                 entity.Property(sd => sd.OriginalFileName).IsRequired().HasMaxLength(100);
                 entity.Property(sd => sd.DocumentType).IsRequired().HasConversion<int>();
-                entity.Property(sd => sd.FilePath).IsRequired().HasMaxLength(500);
                 entity.Property(sd => sd.ContentType).IsRequired().HasMaxLength(100);
                 entity.Property(sd => sd.UploadDate).IsRequired();
                 entity.Property(sd => sd.Description).HasMaxLength(500);

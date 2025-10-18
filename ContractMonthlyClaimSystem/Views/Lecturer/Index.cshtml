@@ -1,4 +1,4 @@
-﻿@model ContractMonthlyClaimSystem.Controllers.LecturerDashboardViewModel
+﻿@model ContractMonthlyClaimSystem.Models.ViewModels.LecturerDashboardViewModel
 @{
     ViewData["Title"] = "Lecturer Dashboard";
 }
@@ -95,9 +95,9 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="row justify-content-center">
         <!-- Submit Claim Section -->
-        <div class="col-lg-6 mb-4">
+        <div class="col-lg-10 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
                     <h4 class="mb-0">
@@ -105,98 +105,110 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form asp-controller="Lecturer" asp-action="SubmitClaim" method="post" id="claimForm">
+                    <form asp-controller="Lecturer" asp-action="SubmitClaim" method="post" id="claimForm" enctype="multipart/form-data">
                         @Html.AntiForgeryToken()
 
                         <!-- Hidden field to track submission type -->
                         <input type="hidden" id="SubmissionType" name="SubmissionType" value="Submitted" />
 
-                        <div class="mb-3">
-                            <label for="ClaimMonth" class="form-label">Claim Month</label>
-                            <select class="form-select" id="ClaimMonth" name="ClaimMonth" required>
-                                <option value="">Select Month</option>
-                                @{
-                                    var currentDate = DateTime.Now;
-                                    for (int i = 0; i < 6; i++)
-                                    {
-                                        var date = currentDate.AddMonths(-i);
-                                        <option value="@date.ToString("yyyy-MM")">@date.ToString("MMMM yyyy")</option>
-                                    }
-                                }
-                            </select>
-                            <div class="form-text">Select the month you're claiming for</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <!-- Claim Details -->
+                                <div class="mb-3">
+                                    <label for="ClaimMonth" class="form-label">Claim Month *</label>
+                                    <select class="form-select" id="ClaimMonth" name="ClaimMonth" required>
+                                        <option value="">Select Month</option>
+                                        @{
+                                            var currentDate = DateTime.Now;
+                                            for (int i = 0; i < 6; i++)
+                                            {
+                                                var date = currentDate.AddMonths(-i);
+                                                <option value="@date.ToString("yyyy-MM")">@date.ToString("MMMM yyyy")</option>
+                                            }
+                                        }
+                                    </select>
+                                    <div class="form-text">Select the month you're claiming for</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="TotalHours" class="form-label">Total Hours Worked *</label>
+                                    <input type="number" step="0.5" min="0.5" max="200"
+                                           class="form-control" id="TotalHours" name="TotalHours"
+                                           placeholder="Enter total hours" required>
+                                    <div class="form-text">Hours must be between 0.5 and 200</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Hourly Rate</label>
+                                    <input type="text" class="form-control"
+                                           value="R @Model.Lecturer?.HourlyRate.ToString("N2")" readonly>
+                                    <div class="form-text">Your current contracted hourly rate</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Estimated Amount</label>
+                                    <input type="text" class="form-control" id="EstimatedAmount"
+                                           value="R 0.00" readonly>
+                                    <div class="form-text">Calculated based on hours × hourly rate</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <!-- Document Management Section -->
+                                <div class="mb-3">
+                                    <label class="form-label">Supporting Documents</label>
+                                    <div class="border rounded p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">Attached Documents</h6>
+                                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#documentModal">
+                                                <i class="fas fa-plus me-1"></i>Add Document
+                                            </button>
+                                        </div>
+
+                                        <div id="documentsList" class="mb-3">
+                                            <!-- Always keep the no documents message in the DOM, just show/hide it -->
+                                            <div class="text-muted small" id="noDocumentsMessage">No documents added yet</div>
+                                        </div>
+
+                                        <!-- Multiple hidden file inputs for actual file storage -->
+                                        <div id="hiddenFileInputsContainer" style="display: none;">
+                                            <!-- Dynamic file inputs will be added here -->
+                                        </div>
+
+                                        <!-- Hidden fields for document metadata -->
+                                        <div id="documentMetadataContainer" style="display: none;">
+                                            <!-- Dynamic metadata inputs will be added here -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Document Summary -->
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">
+                                        <i class="fas fa-info-circle me-2"></i>Document Summary
+                                    </h6>
+                                    <div id="documentSummary" class="small">
+                                        <div>Total documents: <span id="documentCount">0</span></div>
+                                        <div>Total size: <span id="totalSize">0 MB</span></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="TotalHours" class="form-label">Total Hours Worked</label>
-                            <input type="number" step="0.5" min="0.5" max="200"
-                                   class="form-control" id="TotalHours" name="TotalHours"
-                                   placeholder="Enter total hours" required>
-                            <div class="form-text">Hours must be between 0.5 and 200</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Hourly Rate</label>
-                            <input type="text" class="form-control"
-                                   value="R @Model.Lecturer?.HourlyRate.ToString("N2")" readonly>
-                            <div class="form-text">Your current contracted hourly rate</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Estimated Amount</label>
-                            <input type="text" class="form-control" id="EstimatedAmount"
-                                   value="R 0.00" readonly>
-                            <div class="form-text">Calculated based on hours × hourly rate</div>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success btn-lg" id="submitButton">
-                                <i class="fas fa-paper-plane me-2"></i>Submit Claim
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" id="draftButton">
-                                <i class="fas fa-save me-2"></i>Save as Draft
-                            </button>
+                        <!-- Action Buttons -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-secondary me-md-2" id="draftButton">
+                                        <i class="fas fa-save me-2"></i>Save as Draft
+                                    </button>
+                                    <button type="submit" class="btn btn-success btn-lg" id="submitButton">
+                                        <i class="fas fa-paper-plane me-2"></i>Submit Claim
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-bolt me-2"></i>Quick Actions
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <a href="#" class="btn btn-outline-primary w-100 h-100 py-3">
-                                <i class="fas fa-upload fa-2x mb-2"></i><br />
-                                Upload Document
-                            </a>
-                        </div>
-                        <div class="col-md-6">
-                            <a href="#" class="btn btn-outline-warning w-100 h-100 py-3" onclick="showDrafts()">
-                                <i class="fas fa-file-alt fa-2x mb-2"></i><br />
-                                View Drafts
-                            </a>
-                        </div>
-                        <div class="col-md-6">
-                            <a href="#" class="btn btn-outline-success w-100 h-100 py-3">
-                                <i class="fas fa-history fa-2x mb-2"></i><br />
-                                View History
-                            </a>
-                        </div>
-                        <div class="col-md-6">
-                            <a href="#" class="btn btn-outline-secondary w-100 h-100 py-3">
-                                <i class="fas fa-download fa-2x mb-2"></i><br />
-                                Export Reports
-                            </a>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -250,6 +262,22 @@
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
                                                 }
+                                                @if (claim.SupportingDocuments?.Any() == true)
+                                                {
+                                                    <div class="mt-1">
+                                                        @foreach (var document in claim.SupportingDocuments)
+                                                        {
+                                                            <div>
+                                                                <a asp-controller="Lecturer"
+                                                                   asp-action="DownloadDocument"
+                                                                   asp-route-documentId="@document.DocumentId"
+                                                                   class="btn btn-sm btn-outline-success btn-block text-start small">
+                                                                    <i class="fas fa-download me-1"></i> @document.OriginalFileName
+                                                                </a>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
                                             </td>
                                         </tr>
                                     }
@@ -274,6 +302,62 @@
     </div>
 </div>
 
+<!-- Document Modal -->
+<div class="modal fade" id="documentModal" tabindex="-1" aria-labelledby="documentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="documentModalLabel">
+                    <i class="fas fa-file-upload me-2"></i>Add Supporting Document
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="modalDocumentType" class="form-label">Document Type *</label>
+                    <select class="form-select" id="modalDocumentType" required>
+                        <option value="">Select Type</option>
+                        <option value="0">Timesheet</option>
+                        <option value="1">Invoice</option>
+                        <option value="2">Receipt</option>
+                        <option value="3">Contract</option>
+                        <option value="4">Other</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="modalFile" class="form-label">Select File *</label>
+                    <input type="file" class="form-control" id="modalFile"
+                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+                    <div class="form-text small">
+                        Supported formats: PDF, Word, JPG, PNG (Max 10MB)
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="modalDescription" class="form-label">Description</label>
+                    <textarea class="form-control" id="modalDescription" rows="2"
+                              placeholder="Brief description of this document"></textarea>
+                </div>
+
+                <div id="filePreview" class="alert alert-light mt-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-file text-primary me-3 fa-2x"></i>
+                        <div>
+                            <strong id="fileNamePreview"></strong><br>
+                            <small class="text-muted" id="fileSizePreview"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addDocumentBtn">Add Document</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @functions {
     string GetStatusBadgeClass(ClaimStatus status)
     {
@@ -292,6 +376,10 @@
 
 @section Scripts {
     <script>
+        // Document management
+        let documents = [];
+        let documentCounter = 0;
+
         // Set up form submission type
         document.getElementById('draftButton').addEventListener('click', function() {
             document.getElementById('SubmissionType').value = 'Draft';
@@ -300,7 +388,6 @@
 
         document.getElementById('submitButton').addEventListener('click', function(e) {
             document.getElementById('SubmissionType').value = 'Submitted';
-            // Let the form submit normally
         });
 
         // Real-time amount calculation
@@ -308,10 +395,279 @@
             const hours = parseFloat(this.value) || 0;
             const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
             const amount = hours * hourlyRate;
-
-            // Update the estimated amount display
             document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
         });
+
+        // Document modal functionality
+        document.getElementById('modalFile').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                showFilePreview(file);
+            } else {
+                hideFilePreview();
+            }
+        });
+
+        document.getElementById('addDocumentBtn').addEventListener('click', function() {
+            addDocumentToForm();
+        });
+
+        // Reset modal when it's hidden
+        document.getElementById('documentModal').addEventListener('hidden.bs.modal', function() {
+            resetModal();
+        });
+
+        function showFilePreview(file) {
+            const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+            const fileType = getFileType(file.name);
+
+            document.getElementById('fileNamePreview').textContent = file.name;
+            document.getElementById('fileSizePreview').textContent = fileType + ' • ' + fileSize + ' MB';
+            document.getElementById('filePreview').style.display = 'block';
+        }
+
+        function hideFilePreview() {
+            document.getElementById('filePreview').style.display = 'none';
+        }
+
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return 'PDF';
+            if (['doc', 'docx'].includes(ext)) return 'Word';
+            if (['jpg', 'jpeg', 'png'].includes(ext)) return 'Image';
+            return ext.toUpperCase();
+        }
+
+        function addDocumentToForm() {
+            const fileInput = document.getElementById('modalFile');
+            const documentType = document.getElementById('modalDocumentType');
+            const description = document.getElementById('modalDescription');
+
+            if (!fileInput.files[0]) {
+                alert('Please select a file.');
+                return;
+            }
+
+            if (!documentType.value) {
+                alert('Please select a document type.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+
+            // Check file size
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size exceeds 10MB limit. Please choose a smaller file.');
+                return;
+            }
+
+            // Create document object with unique ID
+            const documentId = 'doc_' + documentCounter++;
+            const documentObj = {
+                id: documentId,
+                file: file,
+                type: documentType.value,
+                typeText: documentType.options[documentType.selectedIndex].text,
+                description: description.value,
+                name: file.name,
+                size: file.size,
+                sizeMB: (file.size / (1024 * 1024)).toFixed(2)
+            };
+
+            // Add to documents array
+            documents.push(documentObj);
+
+            // Get the current index (new position in array)
+            const currentIndex = documents.length - 1;
+
+            // Create hidden file input for this document
+            createHiddenFileInput(documentObj);
+
+            // Create metadata inputs for this document WITH INDEX
+            createMetadataInputs(documentObj, currentIndex);
+
+            // Update UI
+            updateDocumentsList();
+            updateDocumentSummary();
+
+            // Show success message
+            showToast('Document added successfully!', 'success');
+
+            // Close modal and reset
+            bootstrap.Modal.getInstance(document.getElementById('documentModal')).hide();
+        }
+
+        function createHiddenFileInput(documentObj) {
+            const container = document.getElementById('hiddenFileInputsContainer');
+
+            // Create a new file input for this specific file
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = 'supportingDocuments';
+            fileInput.style.display = 'none';
+            fileInput.id = `fileInput_${documentObj.id}`;
+
+            // Create a DataTransfer object to hold the file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(documentObj.file);
+            fileInput.files = dataTransfer.files;
+
+            container.appendChild(fileInput);
+        }
+
+        function createMetadataInputs(documentObj, index) {
+            const container = document.getElementById('documentMetadataContainer');
+
+            // Create hidden input for document type (per document) WITH INDEX
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = `DocumentTypes[${index}]`; // Indexed name for controller
+            typeInput.value = documentObj.type;
+            typeInput.id = `typeInput_${documentObj.id}`;
+
+            // Create hidden input for document description (per document) WITH INDEX
+            const descInput = document.createElement('input');
+            descInput.type = 'hidden';
+            descInput.name = `DocumentDescriptions[${index}]`; // Indexed name for controller
+            descInput.value = documentObj.description || '';
+            descInput.id = `descInput_${documentObj.id}`;
+
+            container.appendChild(typeInput);
+            container.appendChild(descInput);
+        }
+
+        function updateDocumentsList() {
+            const documentsList = document.getElementById('documentsList');
+            const noDocumentsMessage = document.getElementById('noDocumentsMessage');
+
+            // Always ensure these elements exist
+            if (!documentsList) {
+                console.error('documentsList element not found');
+                return;
+            }
+
+            if (!noDocumentsMessage) {
+                console.error('noDocumentsMessage element not found');
+                return;
+            }
+
+            console.log('Updating documents list. Total documents:', documents.length);
+
+            if (documents.length === 0) {
+                // Show "no documents" message and clear the list
+                noDocumentsMessage.style.display = 'block';
+                // Remove any existing document items but keep the noDocumentsMessage
+                const existingItems = documentsList.querySelectorAll('.document-item');
+                existingItems.forEach(item => item.remove());
+                return;
+            }
+
+            // Hide "no documents" message
+            noDocumentsMessage.style.display = 'none';
+
+            // Clear existing document items (but keep the noDocumentsMessage)
+            const existingItems = documentsList.querySelectorAll('.document-item');
+            existingItems.forEach(item => item.remove());
+
+            // Add new document items
+            documents.forEach((doc) => {
+                const documentItem = document.createElement('div');
+                documentItem.className = 'document-item card mb-2';
+                documentItem.id = `doc-item-${doc.id}`;
+                documentItem.innerHTML = `
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-8">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file text-primary me-2"></i>
+                                    <div>
+                                        <div class="fw-bold small text-truncate">${doc.name}</div>
+                                        <div class="text-muted smaller">
+                                            ${doc.typeText} • ${doc.sizeMB} MB
+                                            ${doc.description ? '• ' + doc.description : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDocument('${doc.id}')">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                documentsList.appendChild(documentItem);
+            });
+
+            console.log('Updated documents list with', documents.length, 'documents');
+        }
+
+        function removeDocument(id) {
+            console.log('Removing document with id:', id);
+
+            // Find the index before removal
+            const indexToRemove = documents.findIndex(doc => doc.id === id);
+
+            // Remove from documents array
+            const initialLength = documents.length;
+            documents = documents.filter(doc => doc.id !== id);
+            console.log(`Removed document. Array length: ${initialLength} -> ${documents.length}`);
+
+            // Remove hidden file input
+            const fileInput = document.getElementById(`fileInput_${id}`);
+            if (fileInput) fileInput.remove();
+
+            // Remove metadata inputs
+            const typeInput = document.getElementById(`typeInput_${id}`);
+            const descInput = document.getElementById(`descInput_${id}`);
+            if (typeInput) typeInput.remove();
+            if (descInput) descInput.remove();
+
+            // Remove the document item from UI
+            const documentItem = document.getElementById(`doc-item-${id}`);
+            if (documentItem) documentItem.remove();
+
+            // RE-INDEX all remaining documents
+            reindexDocuments();
+
+            // Update UI
+            updateDocumentsList();
+            updateDocumentSummary();
+
+            showToast('Document removed!', 'warning');
+        }
+
+        function reindexDocuments() {
+            // Clear all existing metadata inputs
+            const metadataContainer = document.getElementById('documentMetadataContainer');
+            metadataContainer.innerHTML = '';
+
+            // Recreate metadata inputs with correct indexes
+            documents.forEach((doc, index) => {
+                createMetadataInputs(doc, index);
+            });
+        }
+
+        function updateDocumentSummary() {
+            const totalSize = documents.reduce((sum, doc) => sum + doc.size, 0);
+            const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+
+            document.getElementById('documentCount').textContent = documents.length;
+            document.getElementById('totalSize').textContent = totalSizeMB + ' MB';
+        }
+
+        function resetModal() {
+            document.getElementById('modalFile').value = '';
+            document.getElementById('modalDocumentType').value = '';
+            document.getElementById('modalDescription').value = '';
+            hideFilePreview();
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple alert for now - you can enhance this with proper toast notifications
+            alert(message);
+        }
 
         // Form validation
         document.getElementById('claimForm').addEventListener('submit', function(e) {
@@ -335,7 +691,11 @@
 
             // Confirm submission for actual claims
             if (submissionType === 'Submitted') {
-                const confirmed = confirm('Are you sure you want to submit this claim? Once submitted, you cannot edit it.');
+                const documentMessage = documents.length > 0 ?
+                    `with ${documents.length} supporting document(s)` :
+                    'without any supporting documents';
+
+                const confirmed = confirm(`Are you sure you want to submit this claim ${documentMessage}? Once submitted, you cannot edit it.`);
                 if (!confirmed) {
                     e.preventDefault();
                     return;
@@ -343,18 +703,8 @@
             }
         });
 
-        function showDrafts() {
-            const draftClaims = @Model.RecentClaims.Count(mc => mc.Status == ClaimStatus.Draft);
-            if (draftClaims > 0) {
-                alert(`You have ${draftClaims} draft claim(s). They are listed in the Recent Claims table below.`);
-            } else {
-                alert('You don\'t have any draft claims.');
-            }
-        }
-
         function editDraft(claimId) {
             if (confirm('Would you like to edit this draft claim?')) {
-                // Redirect to edit page - you'll need to implement this
                 window.location.href = '/Lecturer/EditDraft/' + claimId;
             }
         }
@@ -363,12 +713,29 @@
             document.getElementById('ClaimMonth').focus();
         }
 
-        // Initialize estimated amount on page load
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
             const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
             const amount = hours * hourlyRate;
             document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
+            updateDocumentSummary();
         });
     </script>
+
+    <style>
+        .document-item {
+            border-left: 4px solid #0d6efd;
+            transition: all 0.3s ease;
+        }
+
+            .document-item:hover {
+                background-color: #f8f9fa;
+                transform: translateX(2px);
+            }
+
+        .smaller {
+            font-size: 0.75rem;
+        }
+    </style>
 }

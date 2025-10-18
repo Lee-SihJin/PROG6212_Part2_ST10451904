@@ -30,8 +30,8 @@ namespace ContractMonthlyClaimSystem.Models
         [Required]
         public DocumentType DocumentType { get; set; }
 
-        [Required]
-        public string FilePath { get; set; }
+        // Add the BLOB field
+        public byte[]? FileData { get; set; }
 
         public long FileSize { get; set; } // in bytes
 
@@ -42,7 +42,7 @@ namespace ContractMonthlyClaimSystem.Models
         public DateTime UploadDate { get; set; } = DateTime.UtcNow;
 
         [StringLength(500)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         // Navigation properties
         public virtual MonthlyClaim MonthlyClaim { get; set; }
