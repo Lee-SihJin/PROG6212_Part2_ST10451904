@@ -1,6 +1,7 @@
 ﻿@model ContractMonthlyClaimSystem.Models.MonthlyClaim
 @{
     ViewData["Title"] = "Claim Details";
+    string processorName = (Model.ManagerId == null) ? @Model.Coordinator.FullName : @Model.Manager.FullName;
 }
 
 <div class="container-fluid">
@@ -202,26 +203,52 @@
                             </div>
                         }
 
-                        @if (Model.Status >= ClaimStatus.CoordinatorApproved)
+                        @if (Model.CoordinatorId != null)
                         {
-                            <div class="timeline-item active">
-                                <div class="timeline-marker bg-info"></div>
-                                <div class="timeline-content">
-                                    <h6 class="mb-1">Coordinator Approved</h6>
-                                    <p class="text-muted small mb-0">@(Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                            @if (String.Equals(Model.Status.ToString(), "Rejected") && Model.ManagerId == null)
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Rejected By Coordinator @Model.Coordinator.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            else
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Approved By Coordinator @Model.Coordinator.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
                         }
 
-                        @if (Model.Status >= ClaimStatus.ManagerApproved)
+                        @if (Model.ManagerId != null)
                         {
-                            <div class="timeline-item active">
-                                <div class="timeline-marker bg-warning"></div>
-                                <div class="timeline-content">
-                                    <h6 class="mb-1">Manager Approved</h6>
-                                    <p class="text-muted small mb-0">@(Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                            @if (String.Equals(Model.Status.ToString(), "Rejected"))
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Rejected By Manager @Model.Manager.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            else
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Approved By Manager @Model.Manager.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
                         }
 
                         @if (Model.Status >= ClaimStatus.Paid)
@@ -271,41 +298,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Approval Information -->
-            @if (Model.Status >= ClaimStatus.CoordinatorApproved)
-            {
-                <div class="card shadow-sm mt-4">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">
-                            <i class="fas fa-user-check me-2"></i>Approval Information
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        @if (Model.Coordinator != null)
-                        {
-                            <div class="mb-3">
-                                <h6 class="text-primary">Coordinator</h6>
-                                <p class="mb-1">@Model.Coordinator.FullName</p>
-                                <small class="text-muted">
-                                    Approved: @Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm")
-                                </small>
-                            </div>
-                        }
-
-                        @if (Model.Manager != null)
-                        {
-                            <div class="mb-3">
-                                <h6 class="text-primary">Manager</h6>
-                                <p class="mb-1">@Model.Manager.FullName</p>
-                                <small class="text-muted">
-                                    Approved: @Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm")
-                                </small>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
         </div>
     </div>
 </div>
