@@ -1,0 +1,546 @@
+﻿@model ContractMonthlyClaimSystem.Models.MonthlyClaim
+@{
+    ViewData["Title"] = "Processed Claim Details";
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-success" : "bg-danger") text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="card-title mb-1">
+                                <i class="fas @(Model.Status == ClaimStatus.CoordinatorApproved ? "fa-check-circle" : "fa-times-circle") me-2"></i>
+                                Processed Claim - #@Model.ClaimId
+                            </h2>
+                            <p class="card-text mb-0">
+                                @Model.DisplayMonth | Lecturer: @Model.Lecturer?.FullName |
+                                Processed: @Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy")
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-light text-dark p-3 rounded">
+                                <h5 class="mb-1">Status</h5>
+                                <span class="badge @GetStatusBadgeClass(Model.Status) fs-6">
+                                    @Model.Status
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Claim Information -->
+        <div class="col-lg-8">
+            <!-- Decision Summary -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-success" : "bg-danger") text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        @(Model.Status == ClaimStatus.CoordinatorApproved ? "Approval" : "Rejection") Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Decision:</th>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(Model.Status)">
+                                            @Model.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Processed By:</th>
+                                    <td>@Model.Coordinator?.FullName</td>
+                                </tr>
+                                <tr>
+                                    <th>Processed Date:</th>
+                                    <td>@Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy HH:mm")</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            @if (Model.Status == ClaimStatus.CoordinatorApproved && !string.IsNullOrEmpty(Model.CoordinatorComments))
+                            {
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <th width="40%">Approval Notes:</th>
+                                        <td>@Model.CoordinatorComments</td>
+                                    </tr>
+                                </table>
+                            }
+                            else if (Model.Status == ClaimStatus.Rejected && !string.IsNullOrEmpty(Model.CoordinatorComments))
+                            {
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <th width="40%">Rejection Reason:</th>
+                                        <td>@Model.CoordinatorComments</td>
+                                    </tr>
+                                </table>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Details -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Claim Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Claim ID:</th>
+                                    <td>#@Model.ClaimId</td>
+                                </tr>
+                                <tr>
+                                    <th>Claim Month:</th>
+                                    <td>@Model.DisplayMonth</td>
+                                </tr>
+                                <tr>
+                                    <th>Submission Date:</th>
+                                    <td>@Model.SubmissionDate.ToString("dd MMMM yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <th>Lecturer:</th>
+                                    <td>
+                                        <strong>@Model.Lecturer?.FullName</strong>
+                                        @if (!string.IsNullOrEmpty(Model.Lecturer?.Email))
+                                        {
+                                            <br>
+                                        
+                                            <small class="text-muted">@Model.Lecturer.Email</small>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Employee Number:</th>
+                                    <td>@Model.Lecturer?.EmployeeNumber</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Total Hours:</th>
+                                    <td>@Model.TotalHours.ToString("N1") hours</td>
+                                </tr>
+                                <tr>
+                                    <th>Hourly Rate:</th>
+                                    <td>R @Model.Lecturer?.HourlyRate.ToString("N2")</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Amount:</th>
+                                    <td class="fw-bold @(Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
+                                        R @Model.TotalAmount.ToString("N2")
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Processing Time:</th>
+                                    <td>@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supporting Documents -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file me-2"></i>Supporting Documents
+                        <span class="badge bg-primary ms-2">@Model.SupportingDocuments.Count</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.SupportingDocuments.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Document Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Upload Date</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var document in Model.SupportingDocuments)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas @GetFileIconClass(document.OriginalFileName) text-primary me-2"></i>
+                                                    <div>
+                                                        <div class="fw-bold">@document.OriginalFileName</div>
+                                                        <small class="text-muted">@document.FileName</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">@document.DocumentType</span>
+                                            </td>
+                                            <td>@document.FileSizeDisplay</td>
+                                            <td>@document.UploadDate.ToString("dd MMM yyyy")</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(document.Description))
+                                                {
+                                                    <span title="@document.Description" data-bs-toggle="tooltip">
+                                                        @(document.Description.Length > 30 ? document.Description.Substring(0, 30) + "..." : document.Description)
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No description</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Coordinator"
+                                                   asp-action="DownloadDocument"
+                                                   asp-route-documentId="@document.DocumentId"
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Download Document">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-info"
+                                                        onclick="previewDocument(@document.DocumentId, '@document.OriginalFileName')"
+                                                        title="Preview Document">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-excel fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Supporting Documents</h5>
+                            <p class="text-muted">No documents were attached to this claim.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Processing Timeline -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Processing Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item active">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Claim Submitted</h6>
+                                <p class="text-muted small mb-0">@Model.SubmissionDate.ToString("dd MMM yyyy HH:mm")</p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item active">
+                            <div class="timeline-marker @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-info" : "bg-danger")"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Coordinator @(Model.Status == ClaimStatus.CoordinatorApproved ? "Approved" : "Rejected")</h6>
+                                <p class="text-muted small mb-0">@Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm")</p>
+                                @if (Model.Coordinator != null)
+                                {
+                                    <p class="text-muted small mb-0">By: @Model.Coordinator.FullName</p>
+                                }
+                            </div>
+                        </div>
+
+                        @if (Model.Status == ClaimStatus.CoordinatorApproved)
+                        {
+                            <div class="timeline-item @(Model.Status >= ClaimStatus.ManagerApproved ? "active" : "")">
+                                <div class="timeline-marker @(Model.Status >= ClaimStatus.ManagerApproved ? "bg-warning" : "bg-light")"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Manager Approval</h6>
+                                    <p class="text-muted small mb-0">
+                                        @(Model.Status >= ClaimStatus.ManagerApproved ? Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") : "Pending")
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="timeline-item @(Model.Status >= ClaimStatus.Paid ? "active" : "")">
+                                <div class="timeline-marker @(Model.Status >= ClaimStatus.Paid ? "bg-success" : "bg-light")"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Payment</h6>
+                                    <p class="text-muted small mb-0">
+                                        @(Model.Status >= ClaimStatus.Paid ? Model.PaymentDate?.ToString("dd MMM yyyy HH:mm") : "Pending")
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a asp-controller="Coordinator" asp-action="Index" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+
+                        @if (Model.SupportingDocuments.Any())
+                        {
+                            <button type="button" class="btn btn-outline-success" onclick="downloadAllDocuments(@Model.ClaimId)">
+                                <i class="fas fa-download me-2"></i>Download All Documents
+                            </button>
+                        }
+
+                        <button type="button" class="btn btn-outline-info" onclick="printClaim()">
+                            <i class="fas fa-print me-2"></i>Print Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Statistics -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Claim Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td>Total Hours:</td>
+                            <td class="text-end fw-bold">@Model.TotalHours.ToString("N1")</td>
+                        </tr>
+                        <tr>
+                            <td>Hourly Rate:</td>
+                            <td class="text-end">R @Model.Lecturer?.HourlyRate.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td>Total Amount:</td>
+                            <td class="text-end fw-bold @(Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
+                                R @Model.TotalAmount.ToString("N2")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Documents:</td>
+                            <td class="text-end">@Model.SupportingDocuments.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Processing Time:</td>
+                            <td class="text-end">@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
+                        </tr>
+                        <tr>
+                            <td>Days Since Processed:</td>
+                            <td class="text-end">@((DateTime.Now - Model.CoordinatorApprovalDate.Value).Days) days</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-labelledby="documentPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="documentPreviewModalLabel">
+                    <i class="fas fa-file me-2"></i>Document Preview
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="documentPreviewContent">
+                    <p class="text-muted">Loading document preview...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="documentDownloadLink" href="#" class="btn btn-outline-primary">
+                    <i class="fas fa-download me-2"></i>Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function previewDocument(documentId, fileName) {
+            const downloadUrl = '@Url.Action("DownloadDocument", "Coordinator")' + '?documentId=' + documentId;
+            const previewContent = document.getElementById('documentPreviewContent');
+            const downloadLink = document.getElementById('documentDownloadLink');
+
+            downloadLink.href = downloadUrl;
+
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            if (['pdf'].includes(fileExtension)) {
+                previewContent.innerHTML = `<embed src="${downloadUrl}" type="application/pdf" width="100%" height="600px"><p class="mt-2 text-muted">PDF Document - ${fileName}</p>`;
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+                previewContent.innerHTML = `<img src="${downloadUrl}" alt="${fileName}" class="img-fluid" style="max-height: 600px;"><p class="mt-2 text-muted">Image File - ${fileName}</p>`;
+            } else {
+                previewContent.innerHTML = `<div class="alert alert-info"><i class="fas fa-download fa-2x mb-3"></i><h5>Document Preview Not Available</h5><p>This file type cannot be previewed in the browser.</p><p>Please download the file to view its contents.</p><p class="text-muted">File: ${fileName}</p></div>`;
+            }
+
+            document.getElementById('documentPreviewModalLabel').textContent = `Preview: ${fileName}`;
+            const modal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+            modal.show();
+        }
+
+        function downloadAllDocuments(claimId) {
+            window.location.href = '/Coordinator/DownloadAllDocuments?claimId=' + claimId;
+        }
+
+        function printClaim() {
+            window.print();
+        }
+
+        function showAuditTrail() {
+            alert('Audit trail functionality would show detailed history of all actions performed on this claim.');
+            // In a real implementation, this would open a modal with audit trail data
+        }
+
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+
+    <style>
+        .table-borderless td, .table-borderless th {
+            border: none;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -30px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            z-index: 2;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            bottom: -20px;
+            width: 2px;
+            background-color: #e9ecef;
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-item.active .timeline-marker {
+            box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.2);
+        }
+
+        .timeline-content h6 {
+            margin-bottom: 5px;
+        }
+
+        @@media print {
+            .btn, .modal, .card-header .badge {
+                display: none !important;
+            }
+
+            .card {
+                border: 1px solid #dee2e6 !important;
+            }
+        }
+    </style>
+}
+
+@functions {
+    string GetStatusBadgeClass(ClaimStatus status)
+    {
+        return status switch
+        {
+            ClaimStatus.Draft => "bg-secondary",
+            ClaimStatus.Submitted => "bg-warning",
+            ClaimStatus.CoordinatorApproved => "bg-info",
+            ClaimStatus.ManagerApproved => "bg-success",
+            ClaimStatus.Paid => "bg-success",
+            ClaimStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetFileIconClass(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return "fa-file";
+
+        var ext = fileName.Contains('.') ? fileName.Substring(fileName.LastIndexOf('.')).ToLower() : "";
+
+        switch (ext)
+        {
+            case ".pdf":
+                return "fa-file-pdf";
+            case ".doc":
+            case ".docx":
+                return "fa-file-word";
+            case ".xls":
+            case ".xlsx":
+                return "fa-file-excel";
+            case ".jpg":
+            case ".jpeg":
+            case ".png":
+            case ".gif":
+                return "fa-file-image";
+            case ".zip":
+            case ".rar":
+                return "fa-file-archive";
+            default:
+                return "fa-file";
+        }
+    }
+}

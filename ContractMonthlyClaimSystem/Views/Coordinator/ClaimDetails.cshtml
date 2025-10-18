@@ -1,0 +1,568 @@
+﻿@model ContractMonthlyClaimSystem.Models.MonthlyClaim
+@{
+    ViewData["Title"] = "Review Claim";
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="card-title mb-1">
+                                <i class="fas fa-search me-2"></i>Review Claim
+                            </h2>
+                            <p class="card-text mb-0">
+                                Claim #@Model.ClaimId for @Model.DisplayMonth | Submitted: @Model.SubmissionDate.ToString("dd MMMM yyyy")
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-light text-dark p-3 rounded">
+                                <h5 class="mb-1">Current Status</h5>
+                                <span class="badge @GetStatusBadgeClass(Model.Status) fs-6">
+                                    @Model.Status
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Claim Information -->
+        <div class="col-lg-8">
+            <!-- Lecturer & Claim Details -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-tie me-2"></i>Lecturer & Claim Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Lecturer:</th>
+                                    <td>
+                                        <strong>@Model.Lecturer?.FullName</strong>
+                                        <br>
+                                        <small class="text-muted">@Model.Lecturer?.Email</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Employee Number:</th>
+                                    <td>@Model.Lecturer?.EmployeeNumber</td>
+                                </tr>
+                                <tr>
+                                    <th>Hourly Rate:</th>
+                                    <td>R @Model.Lecturer?.HourlyRate.ToString("N2")</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Claim Month:</th>
+                                    <td>@Model.DisplayMonth</td>
+                                </tr>
+                                <tr>
+                                    <th>Submission Date:</th>
+                                    <td>@Model.SubmissionDate.ToString("dd MMMM yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Hours:</th>
+                                    <td>@Model.TotalHours.ToString("N1") hours</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Amount:</th>
+                                    <td class="fw-bold text-success">R @Model.TotalAmount.ToString("N2")</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supporting Documents -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file me-2"></i>Supporting Documents
+                        <span class="badge bg-primary ms-2">@Model.SupportingDocuments.Count</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.SupportingDocuments.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Document Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Upload Date</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var document in Model.SupportingDocuments)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas @GetFileIconClass(document.OriginalFileName) text-primary me-2"></i>
+                                                    <div>
+                                                        <div class="fw-bold">@document.OriginalFileName</div>
+                                                        <small class="text-muted">@document.FileName</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">@document.DocumentType</span>
+                                            </td>
+                                            <td>@document.FileSizeDisplay</td>
+                                            <td>@document.UploadDate.ToString("dd MMM yyyy")</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(document.Description))
+                                                {
+                                                    <span title="@document.Description" data-bs-toggle="tooltip">
+                                                        @(document.Description.Length > 30 ? document.Description.Substring(0, 30) + "..." : document.Description)
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No description</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Coordinator"
+                                                   asp-action="DownloadDocument"
+                                                   asp-route-documentId="@document.DocumentId"
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Download Document"
+                                                   target="_blank">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-info"
+                                                        onclick="previewDocument(@document.DocumentId, '@document.OriginalFileName')"
+                                                        title="Preview Document">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-excel fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Supporting Documents</h5>
+                            <p class="text-muted">No documents were attached to this claim.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar - Actions & Information -->
+        <div class="col-lg-4">
+            <!-- Approval Actions -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Approval Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success btn-lg"
+                                onclick="approveClaim(@Model.ClaimId, '@Model.Lecturer?.FullName', '@Model.DisplayMonth')">
+                            <i class="fas fa-check-circle me-2"></i>Approve Claim
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg"
+                                onclick="rejectClaim(@Model.ClaimId, '@Model.Lecturer?.FullName', '@Model.DisplayMonth')">
+                            <i class="fas fa-times-circle me-2"></i>Reject Claim
+                        </button>
+                    </div>
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Review all documents and claim details before making a decision.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Summary -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Claim Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td>Hours Claimed:</td>
+                            <td class="text-end fw-bold">@Model.TotalHours.ToString("N1")</td>
+                        </tr>
+                        <tr>
+                            <td>Hourly Rate:</td>
+                            <td class="text-end">R @Model.Lecturer?.HourlyRate.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td>Total Amount:</td>
+                            <td class="text-end fw-bold text-success">R @Model.TotalAmount.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td>Documents:</td>
+                            <td class="text-end">@Model.SupportingDocuments.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Days Since Submission:</td>
+                            <td class="text-end">@((DateTime.Now - Model.SubmissionDate).Days) days</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a asp-controller="Coordinator" asp-action="Index" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+
+                        @if (Model.SupportingDocuments.Any())
+                        {
+                            <button type="button" class="btn btn-outline-info" onclick="downloadAllDocuments(@Model.ClaimId)">
+                                <i class="fas fa-download me-2"></i>Download All Documents
+                            </button>
+                        }
+
+                        <button type="button" class="btn btn-outline-secondary" onclick="printClaim()">
+                            <i class="fas fa-print me-2"></i>Print Review
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="approvalModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>Approve Claim
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to approve this claim?</p>
+                <div class="alert alert-info">
+                    <strong id="approvalLecturerName"></strong><br>
+                    <span id="approvalClaimMonth"></span><br>
+                    <strong>Amount: <span id="approvalAmount"></span></strong>
+                </div>
+                <div class="mb-3">
+                    <label for="approvalNotes" class="form-label">Approval Notes (Optional)</label>
+                    <textarea class="form-control" id="approvalNotes" rows="3"
+                              placeholder="Add any notes or comments for records..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmApproveBtn">Approve Claim</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectionModal" tabindex="-1" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectionModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Reject Claim
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reject this claim?</p>
+                <div class="alert alert-warning">
+                    <strong id="rejectionLecturerName"></strong><br>
+                    <span id="rejectionClaimMonth"></span><br>
+                    <strong>Amount: <span id="rejectionAmount"></span></strong>
+                </div>
+                <div class="mb-3">
+                    <label for="rejectionReason" class="form-label">Rejection Reason *</label>
+                    <textarea class="form-control" id="rejectionReason" rows="3"
+                              placeholder="Please provide a clear reason for rejection. This will be shared with the lecturer..." required></textarea>
+                    <div class="form-text">This reason will be shared with the lecturer.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmRejectBtn">Reject Claim</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-labelledby="documentPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="documentPreviewModalLabel">
+                    <i class="fas fa-file me-2"></i>Document Preview
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="documentPreviewContent">
+                    <p class="text-muted">Loading document preview...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="documentDownloadLink" href="#" class="btn btn-outline-primary">
+                    <i class="fas fa-download me-2"></i>Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentClaimId = null;
+
+        function approveClaim(claimId, lecturerName, claimMonth) {
+            currentClaimId = claimId;
+            document.getElementById('approvalLecturerName').textContent = lecturerName;
+            document.getElementById('approvalClaimMonth').textContent = `Claim for ${claimMonth}`;
+            document.getElementById('approvalAmount').textContent = 'R @Model.TotalAmount.ToString("N2")';
+            document.getElementById('approvalNotes').value = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('approvalModal'));
+            modal.show();
+        }
+
+        function rejectClaim(claimId, lecturerName, claimMonth) {
+            currentClaimId = claimId;
+            document.getElementById('rejectionLecturerName').textContent = lecturerName;
+            document.getElementById('rejectionClaimMonth').textContent = `Claim for ${claimMonth}`;
+            document.getElementById('rejectionAmount').textContent = 'R @Model.TotalAmount.ToString("N2")';
+            document.getElementById('rejectionReason').value = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('rejectionModal'));
+            modal.show();
+        }
+
+        function previewDocument(documentId, fileName) {
+            const downloadUrl = '@Url.Action("DownloadDocument", "Coordinator")' + '?documentId=' + documentId;
+            const previewContent = document.getElementById('documentPreviewContent');
+            const downloadLink = document.getElementById('documentDownloadLink');
+
+            // Set download link
+            downloadLink.href = downloadUrl;
+
+            // Show file type specific preview
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            if (['pdf'].includes(fileExtension)) {
+                previewContent.innerHTML = `
+                    <embed src="${downloadUrl}" type="application/pdf" width="100%" height="600px">
+                    <p class="mt-2 text-muted">PDF Document - ${fileName}</p>
+                `;
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+                previewContent.innerHTML = `
+                    <img src="${downloadUrl}" alt="${fileName}" class="img-fluid" style="max-height: 600px;">
+                    <p class="mt-2 text-muted">Image File - ${fileName}</p>
+                `;
+            } else {
+                previewContent.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-download fa-2x mb-3"></i>
+                        <h5>Document Preview Not Available</h5>
+                        <p>This file type cannot be previewed in the browser.</p>
+                        <p>Please download the file to view its contents.</p>
+                        <p class="text-muted">File: ${fileName}</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('documentPreviewModalLabel').textContent = `Preview: ${fileName}`;
+            const modal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+            modal.show();
+        }
+
+        document.getElementById('confirmApproveBtn').addEventListener('click', function() {
+            const notes = document.getElementById('approvalNotes').value;
+            submitDecision(currentClaimId, true, notes);
+        });
+
+        document.getElementById('confirmRejectBtn').addEventListener('click', function() {
+            const reason = document.getElementById('rejectionReason').value;
+            if (!reason.trim()) {
+                alert('Please provide a rejection reason.');
+                return;
+            }
+            submitDecision(currentClaimId, false, reason);
+        });
+
+        function submitDecision(claimId, isApproved, notes) {
+            // Show loading state
+            const button = isApproved ? document.getElementById('confirmApproveBtn') : document.getElementById('confirmRejectBtn');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            button.disabled = true;
+
+            // Create form submission
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '/Coordinator/ProcessClaim';
+
+            // Add anti-forgery token
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '__RequestVerificationToken';
+            tokenInput.value = token;
+            form.appendChild(tokenInput);
+
+            // Add claim ID
+            const claimIdInput = document.createElement('input');
+            claimIdInput.type = 'hidden';
+            claimIdInput.name = 'claimId';
+            claimIdInput.value = claimId;
+            form.appendChild(claimIdInput);
+
+            // Add approval status
+            const statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'isApproved';
+            statusInput.value = isApproved;
+            form.appendChild(statusInput);
+
+            // Add notes/reason
+            const notesInput = document.createElement('input');
+            notesInput.type = 'hidden';
+            notesInput.name = 'notes';
+            notesInput.value = notes;
+            form.appendChild(notesInput);
+
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function downloadAllDocuments(claimId) {
+            window.location.href = '/Coordinator/DownloadAllDocuments?claimId=' + claimId;
+        }
+
+        function printClaim() {
+            window.print();
+        }
+
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Close modals on hidden
+        document.getElementById('approvalModal').addEventListener('hidden.bs.modal', function() {
+            currentClaimId = null;
+        });
+
+        document.getElementById('rejectionModal').addEventListener('hidden.bs.modal', function() {
+            currentClaimId = null;
+        });
+    </script>
+
+    <style>
+        .table-borderless td, .table-borderless th {
+            border: none;
+        }
+
+        @@media print {
+            .btn, .modal, .card-header .badge {
+                display: none !important;
+            }
+
+            .card {
+                border: 1px solid #dee2e6 !important;
+            }
+        }
+    </style>
+}
+
+@functions {
+    string GetStatusBadgeClass(ClaimStatus status)
+    {
+        return status switch
+        {
+            ClaimStatus.Draft => "bg-secondary",
+            ClaimStatus.Submitted => "bg-warning",
+            ClaimStatus.CoordinatorApproved => "bg-info",
+            ClaimStatus.ManagerApproved => "bg-success",
+            ClaimStatus.Paid => "bg-success",
+            ClaimStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetFileIconClass(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return "fa-file";
+
+        var ext = fileName.Contains('.') ? fileName.Substring(fileName.LastIndexOf('.')).ToLower() : "";
+
+        switch (ext)
+        {
+            case ".pdf":
+                return "fa-file-pdf";
+            case ".doc":
+            case ".docx":
+                return "fa-file-word";
+            case ".xls":
+            case ".xlsx":
+                return "fa-file-excel";
+            case ".jpg":
+            case ".jpeg":
+            case ".png":
+            case ".gif":
+                return "fa-file-image";
+            case ".zip":
+            case ".rar":
+                return "fa-file-archive";
+            default:
+                return "fa-file";
+        }
+    }
+}
