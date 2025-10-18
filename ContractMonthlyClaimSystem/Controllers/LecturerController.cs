@@ -341,5 +341,232 @@ namespace ContractMonthlyClaimSystem.Controllers
                 return File(memoryStream.ToArray(), "application/zip", $"Claim-{claimId}-Documents.zip");
             }
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateDraft(SubmitClaimViewModel model, string action,
+    List<IFormFile> NewSupportingDocuments, List<int> DocumentsToDelete, int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Please correct the errors below.";
+                return RedirectToAction(nameof(EditDraft), new { id = id });
+            }
+
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _context.Users
+                    .Include(u => u.Lecturer)
+                    .FirstOrDefaultAsync(u => u.Id.ToString() == currentUserId);
+
+                if (currentUser?.Lecturer == null)
+                {
+                    TempData["Error"] = "Lecturer profile not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Get the existing claim
+                var existingClaim = await _context.MonthlyClaims
+                    .Include(mc => mc.SupportingDocuments)
+                    .FirstOrDefaultAsync(mc => mc.ClaimId == id && mc.LecturerId == currentUser.Lecturer.LecturerId);
+
+                if (existingClaim == null)
+                {
+                    TempData["Error"] = "Claim not found or access denied.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (existingClaim.Status != ClaimStatus.Draft)
+                {
+                    TempData["Error"] = "Only draft claims can be edited.";
+                    return RedirectToAction(nameof(ClaimDetails), new { id = id });
+                }
+
+                // Update claim details
+                existingClaim.TotalHours = model.TotalHours;
+                existingClaim.TotalAmount = model.TotalHours * currentUser.Lecturer.HourlyRate;
+
+                // Determine new status based on action
+                if (action == "submit")
+                {
+                    existingClaim.Status = ClaimStatus.Submitted;
+                    existingClaim.SubmissionDate = DateTime.Now; // Update submission date when submitting
+                }
+                else
+                {
+                    existingClaim.Status = ClaimStatus.Draft;
+                }
+
+                // Handle document deletions
+                if (DocumentsToDelete != null && DocumentsToDelete.Any())
+                {
+                    var documentsToRemove = await _context.SupportingDocuments
+                        .Where(d => DocumentsToDelete.Contains(d.DocumentId) && d.ClaimId == existingClaim.ClaimId)
+                        .ToListAsync();
+
+                    _context.SupportingDocuments.RemoveRange(documentsToRemove);
+                }
+
+                // Handle new document uploads
+                if (NewSupportingDocuments != null && NewSupportingDocuments.Count > 0)
+                {
+                    var newDocumentTypes = Request.Form["NewDocumentTypes"].ToList();
+                    var newDocumentDescriptions = Request.Form["NewDocumentDescriptions"].ToList();
+
+                    for (int i = 0; i < NewSupportingDocuments.Count; i++)
+                    {
+                        var file = NewSupportingDocuments[i];
+                        if (file.Length > 0)
+                        {
+                            // Get document type and description
+                            var documentType = i < newDocumentTypes.Count ? newDocumentTypes[i] : null;
+                            var documentDescription = i < newDocumentDescriptions.Count ? newDocumentDescriptions[i] : null;
+
+                            // Read file into byte array
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                await file.CopyToAsync(memoryStream);
+                                var fileData = memoryStream.ToArray();
+
+                                // Create supporting document record with file data
+                                var supportingDocument = new SupportingDocument
+                                {
+                                    ClaimId = existingClaim.ClaimId,
+                                    FileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName),
+                                    OriginalFileName = file.FileName,
+                                    DocumentType = documentType != null ? (DocumentType)int.Parse(documentType) : DocumentType.Other,
+                                    FileData = fileData,
+                                    FileSize = file.Length,
+                                    ContentType = file.ContentType,
+                                    Description = documentDescription,
+                                    UploadDate = DateTime.Now
+                                };
+
+                                _context.SupportingDocuments.Add(supportingDocument);
+                            }
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                var actionMessage = action == "submit" ? "submitted" : "updated";
+                var newDocsMessage = NewSupportingDocuments?.Count > 0 ? $" with {NewSupportingDocuments.Count} new document(s)" : "";
+                var deleteDocsMessage = DocumentsToDelete?.Count > 0 ? $" and removed {DocumentsToDelete.Count} document(s)" : "";
+
+                TempData["Success"] = $"Claim for {existingClaim.DisplayMonth} {actionMessage} successfully{newDocsMessage}{deleteDocsMessage}!";
+
+                _logger.LogInformation("Lecturer {LecturerId} {action} draft claim {ClaimId}",
+                    currentUser.Lecturer.LecturerId, actionMessage, existingClaim.ClaimId);
+
+                return RedirectToAction(nameof(ClaimDetails), new { id = existingClaim.ClaimId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating draft claim {ClaimId}", id);
+                TempData["Error"] = "An error occurred while updating the claim.";
+                return RedirectToAction(nameof(EditDraft), new { id = id });
+            }
+        }
+
+        // Also add the EditDraft GET action if you don't have it already
+        [HttpGet]
+        public async Task<IActionResult> EditDraft(int id)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _context.Users
+                    .Include(u => u.Lecturer)
+                    .FirstOrDefaultAsync(u => u.Id.ToString() == currentUserId);
+
+                if (currentUser?.Lecturer == null)
+                {
+                    TempData["Error"] = "Lecturer profile not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var claim = await _context.MonthlyClaims
+                    .Include(mc => mc.Lecturer)
+                    .Include(mc => mc.SupportingDocuments)
+                    .FirstOrDefaultAsync(mc => mc.ClaimId == id && mc.LecturerId == currentUser.Lecturer.LecturerId);
+
+                if (claim == null)
+                {
+                    TempData["Error"] = "Claim not found or access denied.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (claim.Status != ClaimStatus.Draft)
+                {
+                    TempData["Error"] = "Only draft claims can be edited.";
+                    return RedirectToAction(nameof(ClaimDetails), new { id = claim.ClaimId });
+                }
+
+                return View(claim);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading draft claim for editing");
+                TempData["Error"] = "An error occurred while loading the claim for editing.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteClaim(int id)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _context.Users
+                    .Include(u => u.Lecturer)
+                    .FirstOrDefaultAsync(u => u.Id.ToString() == currentUserId);
+
+                if (currentUser?.Lecturer == null)
+                {
+                    TempData["Error"] = "Lecturer profile not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Get the claim with related documents
+                var claim = await _context.MonthlyClaims
+                    .Include(c => c.SupportingDocuments)
+                    .FirstOrDefaultAsync(c => c.ClaimId == id && c.LecturerId == currentUser.Lecturer.LecturerId);
+
+                if (claim == null)
+                {
+                    TempData["Error"] = "Claim not found or access denied.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Store claim info for success message
+                var claimMonth = claim.DisplayMonth;
+
+                // Remove supporting documents first (if any)
+                if (claim.SupportingDocuments.Any())
+                {
+                    _context.SupportingDocuments.RemoveRange(claim.SupportingDocuments);
+                }
+
+                // Remove the claim
+                _context.MonthlyClaims.Remove(claim);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Claim for {claimMonth} has been deleted successfully.";
+
+                _logger.LogInformation("Lecturer {LecturerId} deleted draft claim {ClaimId} for {ClaimMonth}",
+                    currentUser.Lecturer.LecturerId, id, claimMonth);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting claim {ClaimId}", id);
+                TempData["Error"] = "An error occurred while deleting the claim.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

@@ -252,16 +252,25 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <a asp-controller="Lecturer" asp-action="ClaimDetails" asp-route-id="@claim.ClaimId"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-eye"></i> View
-                                                </a>
-                                                @if (claim.Status == ClaimStatus.Draft)
-                                                {
-                                                    <a href="#" class="btn btn-sm btn-outline-warning ms-1" onclick="editDraft(@claim.ClaimId)">
-                                                        <i class="fas fa-edit"></i> Edit
+                                                <div class="btn-group" role="group">
+                                                    <a asp-controller="Lecturer" asp-action="ClaimDetails" asp-route-id="@claim.ClaimId"
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i> View
                                                     </a>
-                                                }
+                                                    @if (claim.Status == ClaimStatus.Draft)
+                                                    {
+                                                        <a href="#" class="btn btn-sm btn-outline-warning" onclick="editDraft(@claim.ClaimId)">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                    }
+                                                    <!-- Delete Button -->
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                            onclick="deleteClaim(@claim.ClaimId, '@claim.DisplayMonth')">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </div>
+
+                                                <!-- Document Downloads -->
                                                 @if (claim.SupportingDocuments?.Any() == true)
                                                 {
                                                     <div class="mt-1">
@@ -300,7 +309,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Document Modal -->
 <div class="modal fade" id="documentModal" tabindex="-1" aria-labelledby="documentModalLabel" aria-hidden="true">
@@ -721,6 +729,40 @@
             document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
             updateDocumentSummary();
         });
+
+        function deleteClaim(claimId, claimMonth) {
+            if (confirm(`Are you sure you want to delete the claim for ${claimMonth}? This action cannot be undone.`)) {
+                // Show loading state
+                const deleteButton = event.target;
+                const originalHtml = deleteButton.innerHTML;
+                deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+                deleteButton.disabled = true;
+
+                // Create a form to submit the delete request
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '/Lecturer/DeleteClaim';
+
+                // Add anti-forgery token
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                form.appendChild(tokenInput);
+
+                // Add claim ID
+                const claimIdInput = document.createElement('input');
+                claimIdInput.type = 'hidden';
+                claimIdInput.name = 'id';
+                claimIdInput.value = claimId;
+                form.appendChild(claimIdInput);
+
+                // Submit the form
+                document.body.appendChild(form);
+                form.submit();
+            }
+        };
     </script>
 
     <style>
