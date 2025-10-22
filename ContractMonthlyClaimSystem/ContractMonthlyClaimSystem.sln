@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36327.8 d17.14
+VisualStudioVersion = 17.14.36327.8
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContractMonthlyClaimSystem", "ContractMonthlyClaimSystem.csproj", "{D5D8FA41-1B8B-4313-952E-7FF987C95814}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICClaimTests", "..\ICClaimTests\ICClaimTests.csproj", "{6E01CA00-AD27-4300-BE15-9358537D8125}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{D5D8FA41-1B8B-4313-952E-7FF987C95814}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D5D8FA41-1B8B-4313-952E-7FF987C95814}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D5D8FA41-1B8B-4313-952E-7FF987C95814}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E01CA00-AD27-4300-BE15-9358537D8125}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E01CA00-AD27-4300-BE15-9358537D8125}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E01CA00-AD27-4300-BE15-9358537D8125}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E01CA00-AD27-4300-BE15-9358537D8125}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

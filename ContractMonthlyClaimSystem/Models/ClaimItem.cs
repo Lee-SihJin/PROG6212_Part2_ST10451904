@@ -27,5 +27,10 @@ namespace ContractMonthlyClaimSystem.Models
 
         // Navigation properties
         public virtual MonthlyClaim MonthlyClaim { get; set; }
+        
+        public decimal CalculateTotalAmount()
+        {
+            return HoursWorked * HourlyRate;
+        }
     }
 }

@@ -62,4 +62,5 @@ namespace ContractMonthlyClaimSystem.Models
         public bool RequiresCoordinator => Status >= ClaimStatus.Submitted;
         public bool RequiresManager => Status >= ClaimStatus.CoordinatorApproved;
     }
+
 }
