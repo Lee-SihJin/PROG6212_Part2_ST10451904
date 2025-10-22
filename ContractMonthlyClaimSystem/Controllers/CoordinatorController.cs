@@ -36,8 +36,8 @@ namespace ContractMonthlyClaimSystem.Controllers
 
                     RecentlyProcessedClaims = await _context.MonthlyClaims
                         .Include(mc => mc.Lecturer)
-                        .Where(mc => mc.Status == ClaimStatus.CoordinatorApproved ||
-                                    mc.Status == ClaimStatus.Rejected)
+                        .Where(mc => mc.Status != ClaimStatus.Draft &&
+                                    mc.Status != ClaimStatus.Submitted)
                         .OrderByDescending(mc => mc.CoordinatorApprovalDate)
                         .Take(10)
                         .ToListAsync(),
@@ -46,7 +46,7 @@ namespace ContractMonthlyClaimSystem.Controllers
                         .CountAsync(mc => mc.Status == ClaimStatus.Submitted),
 
                     ApprovedThisMonthCount = await _context.MonthlyClaims
-                        .CountAsync(mc => mc.Status == ClaimStatus.CoordinatorApproved &&
+                        .CountAsync(mc => mc.CoordinatorId != null && mc.Status != ClaimStatus.Rejected &&
                                          mc.CoordinatorApprovalDate.Value.Month == DateTime.Now.Month &&
                                          mc.CoordinatorApprovalDate.Value.Year == DateTime.Now.Year),
 
@@ -157,6 +157,29 @@ namespace ContractMonthlyClaimSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
+        [HttpGet]
+        public async Task<IActionResult> ProcessedClaims()
+        {
+            try
+            {
+                var processedClaims = await _context.MonthlyClaims
+                    .Include(mc => mc.Lecturer)
+                    .Include(mc => mc.SupportingDocuments)
+                    .Where(mc => mc.Status == ClaimStatus.CoordinatorApproved ||
+                                mc.Status == ClaimStatus.Rejected ||
+                                mc.Status == ClaimStatus.ManagerApproved)
+                    .OrderByDescending(mc => mc.CoordinatorApprovalDate)
+                    .ToListAsync();
+
+                return View(processedClaims);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading processed claims");
+                TempData["Error"] = "An error occurred while loading processed claims.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
 
         [HttpGet]
         public async Task<IActionResult> DownloadDocument(int documentId)
@@ -216,19 +239,13 @@ namespace ContractMonthlyClaimSystem.Controllers
                 var claim = await _context.MonthlyClaims
                     .Include(mc => mc.Lecturer)
                     .Include(mc => mc.Coordinator)
+                    .Include(mc => mc.Manager)
                     .Include(mc => mc.SupportingDocuments)
                     .FirstOrDefaultAsync(mc => mc.ClaimId == id);
 
                 if (claim == null)
                 {
                     TempData["Error"] = "Claim not found.";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                // Only show processed claims (approved or rejected)
-                if (claim.Status != ClaimStatus.CoordinatorApproved && claim.Status != ClaimStatus.Rejected)
-                {
-                    TempData["Error"] = "This claim has not been processed yet.";
                     return RedirectToAction(nameof(Index));
                 }
 

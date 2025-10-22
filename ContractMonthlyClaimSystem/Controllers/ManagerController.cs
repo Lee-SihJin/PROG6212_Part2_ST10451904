@@ -197,28 +197,6 @@ namespace ContractMonthlyClaimSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ProcessedClaims()
-        {
-            try
-            {
-                var processedClaims = await _context.MonthlyClaims
-                    .Include(mc => mc.Lecturer)
-                    .Include(mc => mc.Coordinator)
-                    .Where(mc => mc.Status == ClaimStatus.ManagerApproved || mc.Status == ClaimStatus.Rejected)
-                    .OrderByDescending(mc => mc.ManagerApprovalDate)
-                    .ToListAsync();
-
-                return View(processedClaims);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading processed claims");
-                TempData["Error"] = "An error occurred while loading processed claims.";
-                return RedirectToAction(nameof(Index));
-            }
-        }
-
-        [HttpGet]
         public async Task<IActionResult> DownloadDocument(int documentId)
         {
             var document = await _context.SupportingDocuments
@@ -265,6 +243,104 @@ namespace ContractMonthlyClaimSystem.Controllers
 
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 return File(memoryStream.ToArray(), "application/zip", $"Claim-{claimId}-Documents.zip");
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ProcessedClaims(string status, string month, string lecturer)
+        {
+            try
+            {
+                // Start with base query
+                var query = _context.MonthlyClaims
+                    .Include(mc => mc.Lecturer)
+                    .Include(mc => mc.Coordinator)
+                    .Where(mc => mc.Status == ClaimStatus.ManagerApproved || mc.Status == ClaimStatus.Rejected)
+                    .AsQueryable();
+
+                // Apply status filter
+                if (!string.IsNullOrEmpty(status))
+                {
+                    if (status == "ManagerApproved")
+                    {
+                        query = query.Where(mc => mc.Status == ClaimStatus.ManagerApproved);
+                    }
+                    else if (status == "Rejected")
+                    {
+                        query = query.Where(mc => mc.Status == ClaimStatus.Rejected);
+                    }
+                }
+
+                // Apply month filter
+                if (!string.IsNullOrEmpty(month))
+                {
+                    var filterDate = DateTime.Parse(month + "-01");
+                    query = query.Where(mc => mc.ClaimMonth.Year == filterDate.Year &&
+                                             mc.ClaimMonth.Month == filterDate.Month);
+                }
+
+                // Apply lecturer filter
+                if (!string.IsNullOrEmpty(lecturer))
+                {
+                    query = query.Where(mc => mc.Lecturer.FirstName.Contains(lecturer) ||
+                                             mc.Lecturer.LastName.Contains(lecturer) ||
+                                             mc.Lecturer.EmployeeNumber.Contains(lecturer));
+                }
+
+                // Order by decision date (most recent first)
+                var processedClaims = await query
+                    .OrderByDescending(mc => mc.ManagerApprovalDate)
+                    .ToListAsync();
+
+                // Pass filter values to view for display
+                ViewBag.CurrentStatus = status;
+                ViewBag.CurrentMonth = month;
+                ViewBag.CurrentLecturer = lecturer;
+
+                return View(processedClaims);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading processed claims with filters: Status={Status}, Month={Month}, Lecturer={Lecturer}",
+                    status, month, lecturer);
+                TempData["Error"] = "An error occurred while loading processed claims.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ProcessedClaimDetails(int id)
+        {
+            try
+            {
+                var claim = await _context.MonthlyClaims
+                    .Include(mc => mc.Lecturer)
+                    .Include(mc => mc.Coordinator)
+                    .Include(mc => mc.Manager)
+                    .Include(mc => mc.SupportingDocuments)
+                    .Include(mc => mc.ClaimItems)
+                    .FirstOrDefaultAsync(mc => mc.ClaimId == id);
+
+                if (claim == null)
+                {
+                    TempData["Error"] = "Claim not found.";
+                    return RedirectToAction(nameof(ProcessedClaims));
+                }
+
+                // Only allow viewing of processed claims (approved or rejected)
+                if (claim.Status != ClaimStatus.ManagerApproved && claim.Status != ClaimStatus.Rejected)
+                {
+                    TempData["Error"] = "This claim has not been finally processed yet.";
+                    return RedirectToAction(nameof(ProcessedClaims));
+                }
+
+                return View(claim);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading processed claim details for claim {ClaimId}", id);
+                TempData["Error"] = "An error occurred while loading claim details.";
+                return RedirectToAction(nameof(ProcessedClaims));
             }
         }
     }

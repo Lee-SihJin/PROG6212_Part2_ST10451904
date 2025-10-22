@@ -140,9 +140,6 @@ namespace ContractMonthlyClaimSystem.Data
                 entity.Property(mc => mc.CoordinatorComments).HasMaxLength(500);
                 entity.Property(mc => mc.ManagerComments).HasMaxLength(500);
 
-                // Unique constraint: One claim per lecturer per month
-                entity.HasIndex(mc => new { mc.LecturerId, mc.ClaimMonth })
-                    .IsUnique();
 
                 // Ignore computed properties for database
                 entity.Ignore(mc => mc.DisplayMonth);

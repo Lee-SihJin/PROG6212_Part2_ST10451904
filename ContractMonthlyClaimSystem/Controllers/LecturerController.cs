@@ -89,16 +89,8 @@ namespace ContractMonthlyClaimSystem.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
-                // Check if claim already exists for this month
-                var existingClaim = await _context.MonthlyClaims
-                    .FirstOrDefaultAsync(mc => mc.LecturerId == currentUser.Lecturer.LecturerId &&
-                                              mc.ClaimMonth == DateTime.Parse(model.ClaimMonth + "-01"));
-
-                if (existingClaim != null)
-                {
-                    TempData["Error"] = "A claim already exists for the selected month.";
-                    return RedirectToAction(nameof(Index));
-                }
+                // Parse the claim month properly
+                var claimMonthDate = DateTime.Parse(model.ClaimMonth + "-01");
 
                 // Determine status based on submission type
                 var status = submissionType == "Draft" ? ClaimStatus.Draft : ClaimStatus.Submitted;
@@ -106,7 +98,7 @@ namespace ContractMonthlyClaimSystem.Controllers
                 var monthlyClaim = new MonthlyClaim
                 {
                     LecturerId = currentUser.Lecturer.LecturerId,
-                    ClaimMonth = DateTime.Parse(model.ClaimMonth + "-01"),
+                    ClaimMonth = claimMonthDate,
                     SubmissionDate = DateTime.Now,
                     TotalHours = model.TotalHours,
                     TotalAmount = model.TotalHours * currentUser.Lecturer.HourlyRate,
@@ -116,10 +108,8 @@ namespace ContractMonthlyClaimSystem.Controllers
                 _context.MonthlyClaims.Add(monthlyClaim);
                 await _context.SaveChangesAsync();
 
-                var latestClaim = await _context.MonthlyClaims
-                    .Where(mc => mc.LecturerId == currentUser.Lecturer.LecturerId)
-                    .OrderByDescending(mc => mc.ClaimId) // Or use SubmissionDate if you prefer
-                    .FirstOrDefaultAsync();
+                // Get the newly created claim ID
+                var claimId = monthlyClaim.ClaimId;
 
                 // Handle file uploads from modal
                 if (supportingDocuments != null && supportingDocuments.Count > 0)
@@ -142,7 +132,7 @@ namespace ContractMonthlyClaimSystem.Controllers
                                 // Create supporting document record with file data
                                 var supportingDocument = new SupportingDocument
                                 {
-                                    ClaimId = latestClaim.ClaimId,
+                                    ClaimId = claimId,
                                     FileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName),
                                     OriginalFileName = file.FileName,
                                     DocumentType = documentType != null ? (DocumentType)int.Parse(documentType) : DocumentType.Other,
@@ -542,8 +532,16 @@ namespace ContractMonthlyClaimSystem.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                // Only allow deletion for draft or submitted claims
+                if (claim.Status != ClaimStatus.Draft && claim.Status != ClaimStatus.Submitted)
+                {
+                    TempData["Error"] = $"You can only delete claims that are in Draft or Submitted status. Current status: {claim.Status}";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 // Store claim info for success message
                 var claimMonth = claim.DisplayMonth;
+                var claimStatus = claim.Status;
 
                 // Remove supporting documents first (if any)
                 if (claim.SupportingDocuments.Any())
@@ -555,10 +553,11 @@ namespace ContractMonthlyClaimSystem.Controllers
                 _context.MonthlyClaims.Remove(claim);
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"Claim for {claimMonth} has been deleted successfully.";
+                var actionMessage = claimStatus == ClaimStatus.Draft ? "deleted" : "withdrawn";
+                TempData["Success"] = $"Claim for {claimMonth} has been {actionMessage} successfully.";
 
-                _logger.LogInformation("Lecturer {LecturerId} deleted draft claim {ClaimId} for {ClaimMonth}",
-                    currentUser.Lecturer.LecturerId, id, claimMonth);
+                _logger.LogInformation("Lecturer {LecturerId} {action} claim {ClaimId} for {ClaimMonth}",
+                    currentUser.Lecturer.LecturerId, actionMessage, id, claimMonth);
             }
             catch (Exception ex)
             {
@@ -567,6 +566,36 @@ namespace ContractMonthlyClaimSystem.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> CheckExistingClaim(string claimMonth)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _context.Users
+                    .Include(u => u.Lecturer)
+                    .FirstOrDefaultAsync(u => u.Id.ToString() == currentUserId);
+
+                if (currentUser?.Lecturer == null)
+                {
+                    return Json(new { exists = false });
+                }
+
+                var claimMonthDate = DateTime.Parse(claimMonth + "-01");
+                var existingClaim = await _context.MonthlyClaims
+                    .FirstOrDefaultAsync(mc => mc.LecturerId == currentUser.Lecturer.LecturerId &&
+                                              mc.ClaimMonth.Year == claimMonthDate.Year &&
+                                              mc.ClaimMonth.Month == claimMonthDate.Month);
+
+                return Json(new { exists = existingClaim != null });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking existing claim for month {ClaimMonth}", claimMonth);
+                return Json(new { exists = false });
+            }
         }
     }
 }

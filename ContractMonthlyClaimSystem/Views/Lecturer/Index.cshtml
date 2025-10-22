@@ -263,11 +263,16 @@
                                                             <i class="fas fa-edit"></i> Edit
                                                         </a>
                                                     }
-                                                    <!-- Delete Button -->
-                                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                                            onclick="deleteClaim(@claim.ClaimId, '@claim.DisplayMonth')">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
+
+                                                    <!-- Delete/Withdraw Button - Only show for Draft or Submitted claims -->
+                                                    @if (claim.Status == ClaimStatus.Draft || claim.Status == ClaimStatus.Submitted)
+                                                    {
+                                                        <button type="button" class="btn btn-sm @(claim.Status == ClaimStatus.Draft ? "btn-outline-danger" : "btn-outline-warning")"
+                                                                onclick="deleteClaim(@claim.ClaimId, '@claim.DisplayMonth', '@claim.Status')">
+                                                            <i class="fas @(claim.Status == ClaimStatus.Draft ? "fa-trash" : "fa-undo")"></i>
+                                                            @(claim.Status == ClaimStatus.Draft ? "Delete" : "Withdraw")
+                                                        </button>
+                                                    }
                                                 </div>
 
                                                 <!-- Document Downloads -->
@@ -383,388 +388,415 @@
 }
 
 @section Scripts {
-    <script>
-        // Document management
-        let documents = [];
-        let documentCounter = 0;
+        <script>
+            // Document management
+            let documents = [];
+            let documentCounter = 0;
 
-        // Set up form submission type
-        document.getElementById('draftButton').addEventListener('click', function() {
-            document.getElementById('SubmissionType').value = 'Draft';
-            document.getElementById('claimForm').submit();
-        });
+            // Set up form submission type
+            document.getElementById('draftButton').addEventListener('click', function() {
+                document.getElementById('SubmissionType').value = 'Draft';
+                document.getElementById('claimForm').submit();
+            });
 
-        document.getElementById('submitButton').addEventListener('click', function(e) {
-            document.getElementById('SubmissionType').value = 'Submitted';
-        });
+            document.getElementById('submitButton').addEventListener('click', function(e) {
+                document.getElementById('SubmissionType').value = 'Submitted';
+            });
 
-        // Real-time amount calculation
-        document.getElementById('TotalHours').addEventListener('input', function() {
-            const hours = parseFloat(this.value) || 0;
-            const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
-            const amount = hours * hourlyRate;
-            document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
-        });
+            // Real-time amount calculation
+            document.getElementById('TotalHours').addEventListener('input', function() {
+                const hours = parseFloat(this.value) || 0;
+                const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
+                const amount = hours * hourlyRate;
+                document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
+            });
 
-        // Document modal functionality
-        document.getElementById('modalFile').addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                showFilePreview(file);
-            } else {
-                hideFilePreview();
-            }
-        });
+            // Document modal functionality
+            document.getElementById('modalFile').addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    showFilePreview(file);
+                } else {
+                    hideFilePreview();
+                }
+            });
 
-        document.getElementById('addDocumentBtn').addEventListener('click', function() {
-            addDocumentToForm();
-        });
+            document.getElementById('addDocumentBtn').addEventListener('click', function() {
+                addDocumentToForm();
+            });
 
-        // Reset modal when it's hidden
-        document.getElementById('documentModal').addEventListener('hidden.bs.modal', function() {
-            resetModal();
-        });
+            // Reset modal when it's hidden
+            document.getElementById('documentModal').addEventListener('hidden.bs.modal', function() {
+                resetModal();
+            });
 
-        function showFilePreview(file) {
-            const fileSize = (file.size / (1024 * 1024)).toFixed(2);
-            const fileType = getFileType(file.name);
+            // Form validation - SINGLE VERSION (remove the duplicate at the bottom)
+            document.getElementById('claimForm').addEventListener('submit', function(e) {
+                const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
+                const month = document.getElementById('ClaimMonth').value;
+                const submissionType = document.getElementById('SubmissionType').value;
 
-            document.getElementById('fileNamePreview').textContent = file.name;
-            document.getElementById('fileSizePreview').textContent = fileType + ' • ' + fileSize + ' MB';
-            document.getElementById('filePreview').style.display = 'block';
-        }
+                if (!month) {
+                    e.preventDefault();
+                    alert('Please select a claim month.');
+                    document.getElementById('ClaimMonth').focus();
+                    return;
+                }
 
-        function hideFilePreview() {
-            document.getElementById('filePreview').style.display = 'none';
-        }
+                if (hours < 0.5 || hours > 200) {
+                    e.preventDefault();
+                    alert('Hours must be between 0.5 and 200.');
+                    document.getElementById('TotalHours').focus();
+                    return;
+                }
 
-        function getFileType(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            if (['pdf'].includes(ext)) return 'PDF';
-            if (['doc', 'docx'].includes(ext)) return 'Word';
-            if (['jpg', 'jpeg', 'png'].includes(ext)) return 'Image';
-            return ext.toUpperCase();
-        }
+                // Confirm submission for actual claims
+                if (submissionType === 'Submitted') {
+                    const documentMessage = documents.length > 0 ?
+                        `with ${documents.length} supporting document(s)` :
+                        'without any supporting documents';
 
-        function addDocumentToForm() {
-            const fileInput = document.getElementById('modalFile');
-            const documentType = document.getElementById('modalDocumentType');
-            const description = document.getElementById('modalDescription');
+                    const confirmed = confirm(`Are you sure you want to submit this claim ${documentMessage}? Once submitted, you cannot edit it.`);
+                    if (!confirmed) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            });
 
-            if (!fileInput.files[0]) {
-                alert('Please select a file.');
-                return;
-            }
+            // Remove the real-time validation for duplicate months
+            document.getElementById('ClaimMonth').addEventListener('change', function() {
+                const month = this.value;
+                if (month) {
+                    // Enable buttons (no duplicate check)
+                    document.getElementById('submitButton').disabled = false;
+                    document.getElementById('draftButton').disabled = false;
 
-            if (!documentType.value) {
-                alert('Please select a document type.');
-                return;
-            }
+                    // Remove any existing warning
+                    const warningDiv = document.getElementById('monthWarning');
+                    if (warningDiv) warningDiv.style.display = 'none';
+                }
+            });
 
-            const file = fileInput.files[0];
+            // Keep all your other functions (showFilePreview, addDocumentToForm, etc.)
+            function showFilePreview(file) {
+                const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+                const fileType = getFileType(file.name);
 
-            // Check file size
-            if (file.size > 10 * 1024 * 1024) {
-                alert('File size exceeds 10MB limit. Please choose a smaller file.');
-                return;
-            }
-
-            // Create document object with unique ID
-            const documentId = 'doc_' + documentCounter++;
-            const documentObj = {
-                id: documentId,
-                file: file,
-                type: documentType.value,
-                typeText: documentType.options[documentType.selectedIndex].text,
-                description: description.value,
-                name: file.name,
-                size: file.size,
-                sizeMB: (file.size / (1024 * 1024)).toFixed(2)
-            };
-
-            // Add to documents array
-            documents.push(documentObj);
-
-            // Get the current index (new position in array)
-            const currentIndex = documents.length - 1;
-
-            // Create hidden file input for this document
-            createHiddenFileInput(documentObj);
-
-            // Create metadata inputs for this document WITH INDEX
-            createMetadataInputs(documentObj, currentIndex);
-
-            // Update UI
-            updateDocumentsList();
-            updateDocumentSummary();
-
-            // Show success message
-            showToast('Document added successfully!', 'success');
-
-            // Close modal and reset
-            bootstrap.Modal.getInstance(document.getElementById('documentModal')).hide();
-        }
-
-        function createHiddenFileInput(documentObj) {
-            const container = document.getElementById('hiddenFileInputsContainer');
-
-            // Create a new file input for this specific file
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.name = 'supportingDocuments';
-            fileInput.style.display = 'none';
-            fileInput.id = `fileInput_${documentObj.id}`;
-
-            // Create a DataTransfer object to hold the file
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(documentObj.file);
-            fileInput.files = dataTransfer.files;
-
-            container.appendChild(fileInput);
-        }
-
-        function createMetadataInputs(documentObj, index) {
-            const container = document.getElementById('documentMetadataContainer');
-
-            // Create hidden input for document type (per document) WITH INDEX
-            const typeInput = document.createElement('input');
-            typeInput.type = 'hidden';
-            typeInput.name = `DocumentTypes[${index}]`; // Indexed name for controller
-            typeInput.value = documentObj.type;
-            typeInput.id = `typeInput_${documentObj.id}`;
-
-            // Create hidden input for document description (per document) WITH INDEX
-            const descInput = document.createElement('input');
-            descInput.type = 'hidden';
-            descInput.name = `DocumentDescriptions[${index}]`; // Indexed name for controller
-            descInput.value = documentObj.description || '';
-            descInput.id = `descInput_${documentObj.id}`;
-
-            container.appendChild(typeInput);
-            container.appendChild(descInput);
-        }
-
-        function updateDocumentsList() {
-            const documentsList = document.getElementById('documentsList');
-            const noDocumentsMessage = document.getElementById('noDocumentsMessage');
-
-            // Always ensure these elements exist
-            if (!documentsList) {
-                console.error('documentsList element not found');
-                return;
+                document.getElementById('fileNamePreview').textContent = file.name;
+                document.getElementById('fileSizePreview').textContent = fileType + ' • ' + fileSize + ' MB';
+                document.getElementById('filePreview').style.display = 'block';
             }
 
-            if (!noDocumentsMessage) {
-                console.error('noDocumentsMessage element not found');
-                return;
+            function hideFilePreview() {
+                document.getElementById('filePreview').style.display = 'none';
             }
 
-            console.log('Updating documents list. Total documents:', documents.length);
+            function getFileType(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                if (['pdf'].includes(ext)) return 'PDF';
+                if (['doc', 'docx'].includes(ext)) return 'Word';
+                if (['jpg', 'jpeg', 'png'].includes(ext)) return 'Image';
+                return ext.toUpperCase();
+            }
 
-            if (documents.length === 0) {
-                // Show "no documents" message and clear the list
-                noDocumentsMessage.style.display = 'block';
-                // Remove any existing document items but keep the noDocumentsMessage
+            function addDocumentToForm() {
+                const fileInput = document.getElementById('modalFile');
+                const documentType = document.getElementById('modalDocumentType');
+                const description = document.getElementById('modalDescription');
+
+                if (!fileInput.files[0]) {
+                    alert('Please select a file.');
+                    return;
+                }
+
+                if (!documentType.value) {
+                    alert('Please select a document type.');
+                    return;
+                }
+
+                const file = fileInput.files[0];
+
+                // Check file size
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size exceeds 10MB limit. Please choose a smaller file.');
+                    return;
+                }
+
+                // Create document object with unique ID
+                const documentId = 'doc_' + documentCounter++;
+                const documentObj = {
+                    id: documentId,
+                    file: file,
+                    type: documentType.value,
+                    typeText: documentType.options[documentType.selectedIndex].text,
+                    description: description.value,
+                    name: file.name,
+                    size: file.size,
+                    sizeMB: (file.size / (1024 * 1024)).toFixed(2)
+                };
+
+                // Add to documents array
+                documents.push(documentObj);
+
+                // Get the current index (new position in array)
+                const currentIndex = documents.length - 1;
+
+                // Create hidden file input for this document
+                createHiddenFileInput(documentObj);
+
+                // Create metadata inputs for this document WITH INDEX
+                createMetadataInputs(documentObj, currentIndex);
+
+                // Update UI
+                updateDocumentsList();
+                updateDocumentSummary();
+
+                // Show success message
+                showToast('Document added successfully!', 'success');
+
+                // Close modal and reset
+                bootstrap.Modal.getInstance(document.getElementById('documentModal')).hide();
+            }
+
+            function createHiddenFileInput(documentObj) {
+                const container = document.getElementById('hiddenFileInputsContainer');
+
+                // Create a new file input for this specific file
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'supportingDocuments';
+                fileInput.style.display = 'none';
+                fileInput.id = `fileInput_${documentObj.id}`;
+
+                // Create a DataTransfer object to hold the file
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(documentObj.file);
+                fileInput.files = dataTransfer.files;
+
+                container.appendChild(fileInput);
+            }
+
+            function createMetadataInputs(documentObj, index) {
+                const container = document.getElementById('documentMetadataContainer');
+
+                // Create hidden input for document type (per document) WITH INDEX
+                const typeInput = document.createElement('input');
+                typeInput.type = 'hidden';
+                typeInput.name = `DocumentTypes[${index}]`; // Indexed name for controller
+                typeInput.value = documentObj.type;
+                typeInput.id = `typeInput_${documentObj.id}`;
+
+                // Create hidden input for document description (per document) WITH INDEX
+                const descInput = document.createElement('input');
+                descInput.type = 'hidden';
+                descInput.name = `DocumentDescriptions[${index}]`; // Indexed name for controller
+                descInput.value = documentObj.description || '';
+                descInput.id = `descInput_${documentObj.id}`;
+
+                container.appendChild(typeInput);
+                container.appendChild(descInput);
+            }
+
+            function updateDocumentsList() {
+                const documentsList = document.getElementById('documentsList');
+                const noDocumentsMessage = document.getElementById('noDocumentsMessage');
+
+                // Always ensure these elements exist
+                if (!documentsList) {
+                    console.error('documentsList element not found');
+                    return;
+                }
+
+                if (!noDocumentsMessage) {
+                    console.error('noDocumentsMessage element not found');
+                    return;
+                }
+
+                console.log('Updating documents list. Total documents:', documents.length);
+
+                if (documents.length === 0) {
+                    // Show "no documents" message and clear the list
+                    noDocumentsMessage.style.display = 'block';
+                    // Remove any existing document items but keep the noDocumentsMessage
+                    const existingItems = documentsList.querySelectorAll('.document-item');
+                    existingItems.forEach(item => item.remove());
+                    return;
+                }
+
+                // Hide "no documents" message
+                noDocumentsMessage.style.display = 'none';
+
+                // Clear existing document items (but keep the noDocumentsMessage)
                 const existingItems = documentsList.querySelectorAll('.document-item');
                 existingItems.forEach(item => item.remove());
-                return;
-            }
 
-            // Hide "no documents" message
-            noDocumentsMessage.style.display = 'none';
-
-            // Clear existing document items (but keep the noDocumentsMessage)
-            const existingItems = documentsList.querySelectorAll('.document-item');
-            existingItems.forEach(item => item.remove());
-
-            // Add new document items
-            documents.forEach((doc) => {
-                const documentItem = document.createElement('div');
-                documentItem.className = 'document-item card mb-2';
-                documentItem.id = `doc-item-${doc.id}`;
-                documentItem.innerHTML = `
-                    <div class="card-body py-2">
-                        <div class="row align-items-center">
-                            <div class="col-8">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-file text-primary me-2"></i>
-                                    <div>
-                                        <div class="fw-bold small text-truncate">${doc.name}</div>
-                                        <div class="text-muted smaller">
-                                            ${doc.typeText} • ${doc.sizeMB} MB
-                                            ${doc.description ? '• ' + doc.description : ''}
+                // Add new document items
+                documents.forEach((doc) => {
+                    const documentItem = document.createElement('div');
+                    documentItem.className = 'document-item card mb-2';
+                    documentItem.id = `doc-item-${doc.id}`;
+                    documentItem.innerHTML = `
+                        <div class="card-body py-2">
+                            <div class="row align-items-center">
+                                <div class="col-8">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-file text-primary me-2"></i>
+                                        <div>
+                                            <div class="fw-bold small text-truncate">${doc.name}</div>
+                                            <div class="text-muted smaller">
+                                                ${doc.typeText} • ${doc.sizeMB} MB
+                                                ${doc.description ? '• ' + doc.description : ''}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDocument('${doc.id}')">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
+                                <div class="col-4 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDocument('${doc.id}')">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                documentsList.appendChild(documentItem);
-            });
+                    `;
+                    documentsList.appendChild(documentItem);
+                });
 
-            console.log('Updated documents list with', documents.length, 'documents');
-        }
-
-        function removeDocument(id) {
-            console.log('Removing document with id:', id);
-
-            // Find the index before removal
-            const indexToRemove = documents.findIndex(doc => doc.id === id);
-
-            // Remove from documents array
-            const initialLength = documents.length;
-            documents = documents.filter(doc => doc.id !== id);
-            console.log(`Removed document. Array length: ${initialLength} -> ${documents.length}`);
-
-            // Remove hidden file input
-            const fileInput = document.getElementById(`fileInput_${id}`);
-            if (fileInput) fileInput.remove();
-
-            // Remove metadata inputs
-            const typeInput = document.getElementById(`typeInput_${id}`);
-            const descInput = document.getElementById(`descInput_${id}`);
-            if (typeInput) typeInput.remove();
-            if (descInput) descInput.remove();
-
-            // Remove the document item from UI
-            const documentItem = document.getElementById(`doc-item-${id}`);
-            if (documentItem) documentItem.remove();
-
-            // RE-INDEX all remaining documents
-            reindexDocuments();
-
-            // Update UI
-            updateDocumentsList();
-            updateDocumentSummary();
-
-            showToast('Document removed!', 'warning');
-        }
-
-        function reindexDocuments() {
-            // Clear all existing metadata inputs
-            const metadataContainer = document.getElementById('documentMetadataContainer');
-            metadataContainer.innerHTML = '';
-
-            // Recreate metadata inputs with correct indexes
-            documents.forEach((doc, index) => {
-                createMetadataInputs(doc, index);
-            });
-        }
-
-        function updateDocumentSummary() {
-            const totalSize = documents.reduce((sum, doc) => sum + doc.size, 0);
-            const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-
-            document.getElementById('documentCount').textContent = documents.length;
-            document.getElementById('totalSize').textContent = totalSizeMB + ' MB';
-        }
-
-        function resetModal() {
-            document.getElementById('modalFile').value = '';
-            document.getElementById('modalDocumentType').value = '';
-            document.getElementById('modalDescription').value = '';
-            hideFilePreview();
-        }
-
-        function showToast(message, type = 'info') {
-            // Simple alert for now - you can enhance this with proper toast notifications
-            alert(message);
-        }
-
-        // Form validation
-        document.getElementById('claimForm').addEventListener('submit', function(e) {
-            const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
-            const month = document.getElementById('ClaimMonth').value;
-            const submissionType = document.getElementById('SubmissionType').value;
-
-            if (!month) {
-                e.preventDefault();
-                alert('Please select a claim month.');
-                document.getElementById('ClaimMonth').focus();
-                return;
+                console.log('Updated documents list with', documents.length, 'documents');
             }
 
-            if (hours < 0.5 || hours > 200) {
-                e.preventDefault();
-                alert('Hours must be between 0.5 and 200.');
-                document.getElementById('TotalHours').focus();
-                return;
+            function removeDocument(id) {
+                console.log('Removing document with id:', id);
+
+                // Find the index before removal
+                const indexToRemove = documents.findIndex(doc => doc.id === id);
+
+                // Remove from documents array
+                const initialLength = documents.length;
+                documents = documents.filter(doc => doc.id !== id);
+                console.log(`Removed document. Array length: ${initialLength} -> ${documents.length}`);
+
+                // Remove hidden file input
+                const fileInput = document.getElementById(`fileInput_${id}`);
+                if (fileInput) fileInput.remove();
+
+                // Remove metadata inputs
+                const typeInput = document.getElementById(`typeInput_${id}`);
+                const descInput = document.getElementById(`descInput_${id}`);
+                if (typeInput) typeInput.remove();
+                if (descInput) descInput.remove();
+
+                // Remove the document item from UI
+                const documentItem = document.getElementById(`doc-item-${id}`);
+                if (documentItem) documentItem.remove();
+
+                // RE-INDEX all remaining documents
+                reindexDocuments();
+
+                // Update UI
+                updateDocumentsList();
+                updateDocumentSummary();
+
+                showToast('Document removed!', 'warning');
             }
 
-            // Confirm submission for actual claims
-            if (submissionType === 'Submitted') {
-                const documentMessage = documents.length > 0 ?
-                    `with ${documents.length} supporting document(s)` :
-                    'without any supporting documents';
+            function reindexDocuments() {
+                // Clear all existing metadata inputs
+                const metadataContainer = document.getElementById('documentMetadataContainer');
+                metadataContainer.innerHTML = '';
 
-                const confirmed = confirm(`Are you sure you want to submit this claim ${documentMessage}? Once submitted, you cannot edit it.`);
-                if (!confirmed) {
-                    e.preventDefault();
-                    return;
+                // Recreate metadata inputs with correct indexes
+                documents.forEach((doc, index) => {
+                    createMetadataInputs(doc, index);
+                });
+            }
+
+            function updateDocumentSummary() {
+                const totalSize = documents.reduce((sum, doc) => sum + doc.size, 0);
+                const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+
+                document.getElementById('documentCount').textContent = documents.length;
+                document.getElementById('totalSize').textContent = totalSizeMB + ' MB';
+            }
+
+            function resetModal() {
+                document.getElementById('modalFile').value = '';
+                document.getElementById('modalDocumentType').value = '';
+                document.getElementById('modalDescription').value = '';
+                hideFilePreview();
+            }
+
+            function showToast(message, type = 'info') {
+                // Simple alert for now - you can enhance this with proper toast notifications
+                alert(message);
+            }
+
+            function editDraft(claimId) {
+                if (confirm('Would you like to edit this draft claim?')) {
+                    window.location.href = '/Lecturer/EditDraft/' + claimId;
                 }
             }
-        });
 
-        function editDraft(claimId) {
-            if (confirm('Would you like to edit this draft claim?')) {
-                window.location.href = '/Lecturer/EditDraft/' + claimId;
+            function focusOnForm() {
+                document.getElementById('ClaimMonth').focus();
             }
-        }
 
-        function focusOnForm() {
-            document.getElementById('ClaimMonth').focus();
-        }
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
+                const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
+                const amount = hours * hourlyRate;
+                document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
+                updateDocumentSummary();
+            });
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const hours = parseFloat(document.getElementById('TotalHours').value) || 0;
-            const hourlyRate = @Model.Lecturer?.HourlyRate ?? 0;
-            const amount = hours * hourlyRate;
-            document.getElementById('EstimatedAmount').value = 'R ' + amount.toFixed(2);
-            updateDocumentSummary();
-        });
+             function deleteClaim(claimId, claimMonth, claimStatus) {
+                const isDraft = claimStatus === 'Draft';
+                const action = isDraft ? 'delete' : 'withdraw';
+                const actionText = isDraft ? 'delete' : 'withdraw';
 
-        function deleteClaim(claimId, claimMonth) {
-            if (confirm(`Are you sure you want to delete the claim for ${claimMonth}? This action cannot be undone.`)) {
-                // Show loading state
-                const deleteButton = event.target;
-                const originalHtml = deleteButton.innerHTML;
-                deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
-                deleteButton.disabled = true;
+                let message = '';
+                if (isDraft) {
+                    message = `Are you sure you want to delete the draft claim for ${claimMonth}? This will permanently remove the claim and all associated documents.`;
+                } else {
+                    message = `Are you sure you want to withdraw the submitted claim for ${claimMonth}? This will remove the claim from the approval process and all associated documents.`;
+                }
 
-                // Create a form to submit the delete request
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = '/Lecturer/DeleteClaim';
+                if (confirm(message)) {
+                    // Show loading state
+                    const deleteButton = event.target;
+                    const originalHtml = deleteButton.innerHTML;
+                    deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (isDraft ? 'Deleting...' : 'Withdrawing...');
+                    deleteButton.disabled = true;
 
-                // Add anti-forgery token
-                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-                const tokenInput = document.createElement('input');
-                tokenInput.type = 'hidden';
-                tokenInput.name = '__RequestVerificationToken';
-                tokenInput.value = token;
-                form.appendChild(tokenInput);
+                    // Create a form to submit the delete request
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '/Lecturer/DeleteClaim';
 
-                // Add claim ID
-                const claimIdInput = document.createElement('input');
-                claimIdInput.type = 'hidden';
-                claimIdInput.name = 'id';
-                claimIdInput.value = claimId;
-                form.appendChild(claimIdInput);
+                    // Add anti-forgery token
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    const tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = '__RequestVerificationToken';
+                    tokenInput.value = token;
+                    form.appendChild(tokenInput);
 
-                // Submit the form
-                document.body.appendChild(form);
-                form.submit();
+                    // Add claim ID
+                    const claimIdInput = document.createElement('input');
+                    claimIdInput.type = 'hidden';
+                    claimIdInput.name = 'id';
+                    claimIdInput.value = claimId;
+                    form.appendChild(claimIdInput);
+
+                    // Submit the form
+                    document.body.appendChild(form);
+                    form.submit();
+                }
             }
-        };
-    </script>
+        </script>
 
+}
     <style>
         .document-item {
             border-left: 4px solid #0d6efd;

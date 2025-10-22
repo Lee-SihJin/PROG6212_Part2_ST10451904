@@ -1,7 +1,10 @@
 ﻿@model ContractMonthlyClaimSystem.Models.MonthlyClaim
 @{
     ViewData["Title"] = "Claim Details";
-    string processorName = (Model.ManagerId == null) ? @Model.Coordinator.FullName : @Model.Manager.FullName;
+    if(Model.Coordinator != null)
+    {
+        string processorName = (Model.ManagerId == null) ? @Model.Coordinator.FullName : @Model.Manager.FullName;
+    }
 }
 
 <div class="container-fluid">

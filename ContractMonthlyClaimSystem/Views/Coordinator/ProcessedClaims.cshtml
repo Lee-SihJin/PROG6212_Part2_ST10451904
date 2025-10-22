@@ -1,0 +1,304 @@
+﻿@model IEnumerable<MonthlyClaim>
+@{
+    ViewData["Title"] = "Processed Claims";
+}
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h2 class="card-title">
+                                <i class="fas fa-history me-2"></i>All Processed Claims
+                            </h2>
+                            <p class="card-text mb-0">
+                                Complete history of approved and rejected claims
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-light text-dark p-3 rounded">
+                                <h5 class="mb-1">Total Processed</h5>
+                                <h4 class="text-primary mb-0">@Model.Count()</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h4>@Model.Count(m => m.Status == ClaimStatus.CoordinatorApproved || m.Status == ClaimStatus.ManagerApproved)</h4>
+                    <p class="mb-0">Coordinator Approved</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h4>@Model.Count(m => m.Status == ClaimStatus.ManagerApproved)</h4>
+                    <p class="mb-0">Manager Approved</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <h4>@Model.Count(m => m.Status == ClaimStatus.Rejected)</h4>
+                    <p class="mb-0">Rejected</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h4>R @Model.Where(m => m.Status == ClaimStatus.CoordinatorApproved || m.Status == ClaimStatus.ManagerApproved).Sum(m => m.TotalAmount).ToString("N0")</h4>
+                    <p class="mb-0">Total Approved Amount</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processed Claims Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-list-alt me-2"></i>Processed Claims History
+                        <span class="badge bg-light text-dark ms-2">@Model.Count()</span>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="processedClaimsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Claim ID</th>
+                                        <th>Lecturer</th>
+                                        <th>Employee Number</th>
+                                        <th>Claim Month</th>
+                                        <th>Hours</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Coordinator Decision</th>
+                                        <th>Manager Decision</th>
+                                        <th>Documents</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var claim in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>#@claim.ClaimId</strong>
+                                            </td>
+                                            <td>
+                                                <strong>@claim.Lecturer?.FullName</strong>
+                                                <br>
+                                                <small class="text-muted">@claim.Lecturer?.Email</small>
+                                            </td>
+                                            <td>@claim.Lecturer?.EmployeeNumber</td>
+                                            <td>@claim.DisplayMonth</td>
+                                            <td>@claim.TotalHours.ToString("N1")</td>
+                                            <td class="fw-bold @(claim.Status == ClaimStatus.Rejected ? "text-danger" : "text-success")">
+                                                R @claim.TotalAmount.ToString("N2")
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusBadgeClass(claim.Status)">
+                                                    @claim.Status
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (claim.CoordinatorApprovalDate.HasValue)
+                                                {
+                                                    <div>
+                                                        <strong>@claim.CoordinatorApprovalDate.Value.ToString("dd MMM yyyy")</strong>
+                                                        <br>
+                                                        <small class="text-muted">@claim.CoordinatorApprovalDate.Value.ToString("HH:mm")</small>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (claim.ManagerApprovalDate.HasValue)
+                                                {
+                                                    <div>
+                                                        <strong>@claim.ManagerApprovalDate.Value.ToString("dd MMM yyyy")</strong>
+                                                        <br>
+                                                        <small class="text-muted">@claim.ManagerApprovalDate.Value.ToString("HH:mm")</small>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (claim.SupportingDocuments?.Any() == true)
+                                                {
+                                                    <span class="badge bg-success"
+                                                          title="@string.Join(", ", claim.SupportingDocuments.Select(d => d.OriginalFileName))"
+                                                          data-bs-toggle="tooltip">
+                                                        <i class="fas fa-file me-1"></i>@claim.SupportingDocuments.Count
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">No documents</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group-vertical btn-group-sm" role="group">
+                                                    <a asp-controller="Coordinator"
+                                                       asp-action="ProcessedClaimDetails"
+                                                       asp-route-id="@claim.ClaimId"
+                                                       class="btn btn-outline-primary mb-1">
+                                                        <i class="fas fa-eye me-1"></i>View Details
+                                                    </a>
+                                                    @if (claim.SupportingDocuments?.Any() == true)
+                                                    {
+                                                        <a asp-controller="Coordinator"
+                                                           asp-action="DownloadAllDocuments"
+                                                           asp-route-claimId="@claim.ClaimId"
+                                                           class="btn btn-outline-success">
+                                                            <i class="fas fa-download me-1"></i>Documents
+                                                        </a>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Additional Statistics -->
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-info">Processing Time</h5>
+                                        @{
+                                            var approvedClaims = Model.Where(m => m.Status == ClaimStatus.CoordinatorApproved && m.CoordinatorApprovalDate.HasValue && m.SubmissionDate != null);
+                                            var avgProcessingDays = approvedClaims.Any() ?
+                                            approvedClaims.Average(m => (m.CoordinatorApprovalDate.Value - m.SubmissionDate).TotalDays) : 0;
+                                        }
+                                        <h3 class="text-info">@avgProcessingDays.ToString("N1") days</h3>
+                                        <small class="text-muted">Average processing time</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-success">Approval Rate</h5>
+                                        @{
+                                            var totalProcessed = Model.Count(m => m.Status == ClaimStatus.CoordinatorApproved || m.Status == ClaimStatus.ManagerApproved || m.Status == ClaimStatus.Rejected);
+                                            var approvedCount = Model.Count(m => m.Status == ClaimStatus.CoordinatorApproved || m.Status == ClaimStatus.ManagerApproved);
+                                            var approvalRate = totalProcessed > 0 ? (approvedCount * 100.0 / totalProcessed) : 0;
+                                        }
+                                        <h3 class="text-success">@approvalRate.ToString("N1")%</h3>
+                                        <small class="text-muted">Coordinator approval rate</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-primary">Active Lecturers</h5>
+                                        <h3 class="text-primary">@Model.Select(m => m.LecturerId).Distinct().Count()</h3>
+                                        <small class="text-muted">Unique lecturers with claims</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Processed Claims Found</h4>
+                            <p class="text-muted">There are no processed claims in the system yet.</p>
+                            <a asp-controller="Coordinator" asp-action="Index" class="btn btn-primary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+
+            // Add sorting functionality to the table
+            const table = document.getElementById('processedClaimsTable');
+            if (table) {
+                const headers = table.querySelectorAll('thead th');
+                headers.forEach((header, index) => {
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', () => {
+                        sortTable(index);
+                    });
+                });
+            }
+        });
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('processedClaimsTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Simple sorting - you can enhance this with more complex logic
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent.trim();
+                const bText = b.cells[columnIndex].textContent.trim();
+                return aText.localeCompare(bText);
+            });
+
+            // Remove existing rows
+            rows.forEach(row => tbody.removeChild(row));
+
+            // Add sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+}
+
+@functions {
+    string GetStatusBadgeClass(ClaimStatus status)
+    {
+        return status switch
+        {
+            ClaimStatus.CoordinatorApproved => "bg-info",
+            ClaimStatus.ManagerApproved => "bg-success",
+            ClaimStatus.Rejected => "bg-danger",
+            ClaimStatus.Submitted => "bg-warning",
+            ClaimStatus.Draft => "bg-secondary",
+            ClaimStatus.Paid => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+}

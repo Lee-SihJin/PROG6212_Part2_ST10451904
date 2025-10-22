@@ -7,17 +7,20 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-success" : "bg-danger") text-white">
+            <div class="card @(Model.CoordinatorId != null ? "bg-success" : "bg-danger") text-white">
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h2 class="card-title mb-1">
-                                <i class="fas @(Model.Status == ClaimStatus.CoordinatorApproved ? "fa-check-circle" : "fa-times-circle") me-2"></i>
+                                <i class="fas @(Model.CoordinatorId != null ? "fa-check-circle" : "fa-times-circle") me-2"></i>
                                 Processed Claim - #@Model.ClaimId
                             </h2>
                             <p class="card-text mb-0">
                                 @Model.DisplayMonth | Lecturer: @Model.Lecturer?.FullName |
-                                Processed: @Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy")
+                                @if (Model.CoordinatorApprovalDate.HasValue)
+                                {
+                                    <span>Processed: @Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy")</span>
+                                }
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
@@ -38,58 +41,54 @@
         <!-- Claim Information -->
         <div class="col-lg-8">
             <!-- Decision Summary -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-success" : "bg-danger") text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-clipboard-check me-2"></i>
-                        @(Model.Status == ClaimStatus.CoordinatorApproved ? "Approval" : "Rejection") Summary
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="40%">Decision:</th>
-                                    <td>
-                                        <span class="badge @GetStatusBadgeClass(Model.Status)">
-                                            @Model.Status
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Processed By:</th>
-                                    <td>@Model.Coordinator?.FullName</td>
-                                </tr>
-                                <tr>
-                                    <th>Processed Date:</th>
-                                    <td>@Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy HH:mm")</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            @if (Model.Status == ClaimStatus.CoordinatorApproved && !string.IsNullOrEmpty(Model.CoordinatorComments))
-                            {
+            @if (Model.CoordinatorId != null)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header @((Model.Status != ClaimStatus.Rejected && Model.CoordinatorId != null) ? "bg-success" : "bg-danger") text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>
+                            @((Model.Status != ClaimStatus.Rejected && Model.CoordinatorId != null) ? "Approval" : "Rejection") Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
                                 <table class="table table-borderless">
                                     <tr>
-                                        <th width="40%">Approval Notes:</th>
-                                        <td>@Model.CoordinatorComments</td>
+                                        <th width="40%">Decision:</th>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(Model.Status)">
+                                                @Model.Status
+                                            </span>
+                                        </td>
                                     </tr>
-                                </table>
-                            }
-                            else if (Model.Status == ClaimStatus.Rejected && !string.IsNullOrEmpty(Model.CoordinatorComments))
-                            {
-                                <table class="table table-borderless">
                                     <tr>
-                                        <th width="40%">Rejection Reason:</th>
-                                        <td>@Model.CoordinatorComments</td>
+                                        <th>Processed By:</th>
+                                        <td>@Model.Coordinator?.FullName</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Processed Date:</th>
+                                        <td>@Model.CoordinatorApprovalDate?.ToString("dd MMMM yyyy HH:mm")</td>
                                     </tr>
                                 </table>
-                            }
+                            </div>
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrEmpty(Model.CoordinatorComments))
+                                {
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <th width="40%">
+                                                @((Model.Status != ClaimStatus.Rejected && Model.CoordinatorId != null) ? "Approval Notes:" : "Rejection Reason:")
+                                    </th>
+                                            <td>@Model.CoordinatorComments</td>
+                                        </tr>
+                                    </table>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            }
 
             <!-- Claim Details -->
             <div class="card shadow-sm mb-4">
@@ -121,7 +120,6 @@
                                         @if (!string.IsNullOrEmpty(Model.Lecturer?.Email))
                                         {
                                             <br>
-                                        
                                             <small class="text-muted">@Model.Lecturer.Email</small>
                                         }
                                     </td>
@@ -144,14 +142,17 @@
                                 </tr>
                                 <tr>
                                     <th>Total Amount:</th>
-                                    <td class="fw-bold @(Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
+                                    <td class="fw-bold @(Model.CoordinatorId != null && Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
                                         R @Model.TotalAmount.ToString("N2")
                                     </td>
                                 </tr>
-                                <tr>
-                                    <th>Processing Time:</th>
-                                    <td>@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
-                                </tr>
+                                @if (Model.CoordinatorApprovalDate.HasValue)
+                                {
+                                    <tr>
+                                        <th>Processing Time:</th>
+                                        <td>@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
+                                    </tr>
+                                }
                             </table>
                         </div>
                     </div>
@@ -262,37 +263,72 @@
                             </div>
                         </div>
 
-                        <div class="timeline-item active">
-                            <div class="timeline-marker @(Model.Status == ClaimStatus.CoordinatorApproved ? "bg-info" : "bg-danger")"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Coordinator @(Model.Status == ClaimStatus.CoordinatorApproved ? "Approved" : "Rejected")</h6>
-                                <p class="text-muted small mb-0">@Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm")</p>
-                                @if (Model.Coordinator != null)
-                                {
-                                    <p class="text-muted small mb-0">By: @Model.Coordinator.FullName</p>
-                                }
-                            </div>
-                        </div>
-
-                        @if (Model.Status == ClaimStatus.CoordinatorApproved)
+                        @if (Model.Status >= ClaimStatus.Submitted)
                         {
-                            <div class="timeline-item @(Model.Status >= ClaimStatus.ManagerApproved ? "active" : "")">
-                                <div class="timeline-marker @(Model.Status >= ClaimStatus.ManagerApproved ? "bg-warning" : "bg-light")"></div>
+                            <div class="timeline-item active">
+                                <div class="timeline-marker bg-primary"></div>
                                 <div class="timeline-content">
-                                    <h6 class="mb-1">Manager Approval</h6>
-                                    <p class="text-muted small mb-0">
-                                        @(Model.Status >= ClaimStatus.ManagerApproved ? Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") : "Pending")
-                                    </p>
+                                    <h6 class="mb-1">Submitted</h6>
+                                    <p class="text-muted small mb-0">Awaiting coordinator approval</p>
                                 </div>
                             </div>
+                        }
 
-                            <div class="timeline-item @(Model.Status >= ClaimStatus.Paid ? "active" : "")">
-                                <div class="timeline-marker @(Model.Status >= ClaimStatus.Paid ? "bg-success" : "bg-light")"></div>
+                        @if (Model.CoordinatorId != null)
+                        {
+                            @if (String.Equals(Model.Status.ToString(), "Rejected") && Model.ManagerId == null)
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Rejected By Coordinator @Model.Coordinator.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Approved By Coordinator @Model.Coordinator.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.CoordinatorApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        @if (Model.ManagerId != null)
+                        {
+                            @if (String.Equals(Model.Status.ToString(), "Rejected"))
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Rejected By Manager @Model.Manager.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="timeline-item active">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Approved By Manager @Model.Manager.FullName</h6>
+                                        <p class="text-muted small mb-0">@(Model.ManagerApprovalDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        @if (Model.Status >= ClaimStatus.Paid)
+                        {
+                            <div class="timeline-item active">
+                                <div class="timeline-marker bg-success"></div>
                                 <div class="timeline-content">
-                                    <h6 class="mb-1">Payment</h6>
-                                    <p class="text-muted small mb-0">
-                                        @(Model.Status >= ClaimStatus.Paid ? Model.PaymentDate?.ToString("dd MMM yyyy HH:mm") : "Pending")
-                                    </p>
+                                    <h6 class="mb-1">Paid</h6>
+                                    <p class="text-muted small mb-0">@(Model.PaymentDate?.ToString("dd MMM yyyy HH:mm") ?? "Pending")</p>
                                 </div>
                             </div>
                         }
@@ -346,7 +382,7 @@
                         </tr>
                         <tr>
                             <td>Total Amount:</td>
-                            <td class="text-end fw-bold @(Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
+                            <td class="text-end fw-bold @(Model.CoordinatorId != null && Model.Status == ClaimStatus.CoordinatorApproved ? "text-success" : "text-muted")">
                                 R @Model.TotalAmount.ToString("N2")
                             </td>
                         </tr>
@@ -354,14 +390,17 @@
                             <td>Documents:</td>
                             <td class="text-end">@Model.SupportingDocuments.Count</td>
                         </tr>
-                        <tr>
-                            <td>Processing Time:</td>
-                            <td class="text-end">@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
-                        </tr>
-                        <tr>
-                            <td>Days Since Processed:</td>
-                            <td class="text-end">@((DateTime.Now - Model.CoordinatorApprovalDate.Value).Days) days</td>
-                        </tr>
+                        @if (Model.CoordinatorApprovalDate.HasValue)
+                        {
+                            <tr>
+                                <td>Processing Time:</td>
+                                <td class="text-end">@((Model.CoordinatorApprovalDate.Value - Model.SubmissionDate).Days) days</td>
+                            </tr>
+                            <tr>
+                                <td>Days Since Processed:</td>
+                                <td class="text-end">@((DateTime.Now - Model.CoordinatorApprovalDate.Value).Days) days</td>
+                            </tr>
+                        }
                     </table>
                 </div>
             </div>
